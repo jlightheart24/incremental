@@ -12,6 +12,7 @@ class Item:
     def purchase(self):
         self.amount += 1
         self.price *= self.price_increase
+        self.price = math.ceil(self.price * 100) / 100
         self.stat += self.stat_increase
         print(f"Purchased {self.name}!")
         print(f"You know have {self.amount}.")
