@@ -1,6 +1,6 @@
 from typing import Callable, Iterable
-from attack import AttackState, AttackProfile
-from damage import calc_damage
+from core.attack import AttackState, AttackProfile
+from core.damage import calc_damage
 
 
 class TickController:
@@ -53,6 +53,7 @@ class CombatSystem:
             actor.attack_state.tick(dt)
             if actor.attack_state.ready(actor.attack_profile.cooldown_s):
                 self.basic_attack(actor, self.enemy)
+        
 
     def basic_attack(self, attacker, defender) -> int:
         """Compute damage and apply it to defender; grant attacker MP.
@@ -66,10 +67,11 @@ class CombatSystem:
         """
         damage = calc_damage(attacker.stats.atk, defender.stats.defense)
         defender.health.current -= damage
+        defender.health.clamp()
         attacker.mana.current += attacker.attack_profile.mp_gain_on_attack
+        attacker.mana.clamp()
         attacker.attack_state.reset()
         return damage
 
     def __str__(self) -> str:
         return f"CombatSystem(actors={len(self.actors)}, enemy={type(self.enemy).__name__})"
-
