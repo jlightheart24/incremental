@@ -28,7 +28,7 @@ class CombatScene:
             portrait_path=os.path.join("assets", "portraits", "goofy.png"),
         )
         self.enemy = Enemy(
-            hp=18,
+            hp=100,
             defense=2,
             portrait_path=os.path.join("assets", "portraits", "shadow.png"),
         )
@@ -40,11 +40,19 @@ class CombatScene:
             self._load_portrait(self.a3.portrait_path)
         ]
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
+        self.spawn_enemy(self.enemy)
+        pass
+    
+    def spawn_enemy(self, enemy):
+        self.enemy = enemy
+        self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
+        self.cs.enemy = enemy
         pass
 
     def update(self, dt):
-        if not self.enemy.health.is_dead():
-            self.tc.update(dt, self.cs.on_tick)
+        self.tc.update(dt, self.cs.on_tick)
+        if self.enemy.health.is_dead():
+            self.spawn_enemy(Enemy(hp=100, defense=2, portrait_path=self.enemy.portrait_path))
         pass
 
     def draw(self):
