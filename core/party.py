@@ -28,7 +28,8 @@ def build_party(templates: Sequence[dict]) -> List[Actor]:
         data = dict(template)
         name = data.pop("name")
         portrait_path = _resolve_portrait_path(data.pop("portrait_path", None))
-        actor = Actor(name, portrait_path=portrait_path, **data)
+        spell_id = data.pop("spell_id", None)
+        actor = Actor(name, portrait_path=portrait_path, spell_id=spell_id, **data)
         party.append(actor)
     return party
 
@@ -40,18 +41,20 @@ DEFAULT_PARTY_TEMPLATES: Iterable[dict] = [
         "cd": 0.2,
         "atk": 5,
         "portrait_path": ("assets", "portraits", "sora.png"),
+        "spell_id": "fire",
     },
     {
         "name": "Donald",
         "cd": 0.3,
         "atk": 4,
         "portrait_path": ("assets", "portraits", "donald.png"),
+        "spell_id": "blizzard",
     },
     {
         "name": "Goofy",
         "cd": 0.4,
         "atk": 3,
         "portrait_path": ("assets", "portraits", "goofy.png"),
+        "spell_id": "thunder",
     },
 ]
-

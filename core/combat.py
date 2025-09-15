@@ -57,15 +57,12 @@ class CombatSystem:
 
     def basic_attack(self, attacker, defender) -> int:
         """Compute damage and apply it to defender; grant attacker MP.
-
-        TODO:
-          - Import and use calc_damage(attacker.stats.atk, defender.stats.defense)
-          - Subtract from defender.health.current and clamp
-          - Add attacker.attack_profile.mp_gain_on_attack to attacker.mana.current and clamp
-          - Reset attacker.attack_state
-          - Return the damage dealt (int)
+        Returns the damage dealt.
         """
         damage = calc_damage(attacker.stats.atk, defender.stats.defense)
+        if attacker.mana.full():
+            damage += attacker.magic_damage
+            attacker.mana.current = 0
         defender.health.current -= damage
         defender.health.clamp()
         attacker.mana.current += attacker.attack_profile.mp_gain_on_attack

@@ -5,6 +5,7 @@ from core.entities import Actor, Enemy
 from core.combat import CombatSystem, TickController
 from core.encounters import EncounterPool, DEFAULT_ENCOUNTER_POOLS
 from core.party import DEFAULT_PARTY_TEMPLATES, build_party
+from core.spells import spell_ids
 
 class CombatScene:
     def __init__(self, screen, font):
@@ -13,6 +14,7 @@ class CombatScene:
         # Party setup lives in core.party; swap templates there or inject your own here.
         self.party_templates = DEFAULT_PARTY_TEMPLATES
         self.actors = build_party(self.party_templates)
+        self.available_spells = spell_ids()
         # Encounter selection: swap the default pool or inject a custom EncounterPool.
         self.encounter_pool = EncounterPool(
             DEFAULT_ENCOUNTER_POOLS,
@@ -31,6 +33,20 @@ class CombatScene:
         self.cs.enemy = self.enemy
         pass
 
+    def cycle_actor_spell(self, actor_index: int) -> None:
+        if not self.available_spells:
+            return
+        if not (0 <= actor_index < len(self.actors)):
+            return
+        actor = self.actors[actor_index]
+        current_id = actor.spell_id or self.available_spells[0]
+        try:
+            current_idx = self.available_spells.index(current_id)
+        except ValueError:
+            current_idx = -1
+        next_id = self.available_spells[(current_idx + 1) % len(self.available_spells)]
+        actor.set_spell(next_id)
+
     def update(self, dt):
         self.tc.update(dt, self.cs.on_tick)
         if self.enemy.health.is_dead():
@@ -46,7 +62,7 @@ class CombatScene:
         self._draw_enemy_panel(screen_rect=screen_rect)
 
         portrait_height = self.actor_portraits[0].get_height()
-        spacing = 50  # Control vertical spacing between actor cards.
+        spacing = 70  # Control vertical spacing between actor cards.
         total_height = len(self.actor_portraits) * portrait_height + (len(self.actor_portraits) - 1) * spacing
         start_y = screen_rect.centery - total_height // 2
 
@@ -59,7 +75,11 @@ class CombatScene:
                 top=top,
             )
 
-        hint = self.font.render("Press ESC to quit", True, (180, 180, 180))
+        hint = self.font.render(
+            "ESC: Quit | 1-3: Cycle Spells",
+            True,
+            (180, 180, 180),
+        )
         hint_rect = hint.get_rect()
         hint_rect.midbottom = (
             screen_rect.centerx,
@@ -111,6 +131,7 @@ class CombatScene:
             f"{actor.name}",
             f"HP: {actor.health.current}/{actor.health.max}",
             f"MP: {actor.mana.current}/{actor.mana.max}",
+            f"Spell: {actor.current_spell.name if actor.current_spell else 'None'}",
             f"Level: {actor.level}",
             f"XP: {actor.xp}/{actor.xp_to_level}",
         ]
@@ -134,6 +155,12 @@ def run_combat_ui():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+                elif event.key == pygame.K_1:
+                    scene.cycle_actor_spell(0)
+                elif event.key == pygame.K_2:
+                    scene.cycle_actor_spell(1)
+                elif event.key == pygame.K_3:
+                    scene.cycle_actor_spell(2)
         scene.update(dt)
         scene.draw()
         pygame.display.flip()

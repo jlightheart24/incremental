@@ -1,5 +1,6 @@
 from core.entities import Actor, Enemy
 
+
 def test_actor_enemy_wiring():
     a = Actor("TEST", hp=7, atk=4, defense=1, mp_max=3, cd=0.2, mp_gain=2)
     e = Enemy(hp=9, defense=3)
@@ -8,9 +9,14 @@ def test_actor_enemy_wiring():
     assert a.mana.max == 3
     assert a.attack_profile.cooldown_s == 0.2
     assert a.portrait_path is None
+    assert a.current_spell is None
     assert a.level == 1
     assert a.xp == 0
     assert a.xp_to_level == 100
+    a.set_spell("fire")
+    assert a.current_spell.name == "Fire"
+    assert a.magic_damage == a.current_spell.damage
+    assert a.mana.max == a.current_spell.mp_max
     assert e.stats.defense == 3
     assert e.health.current == 9
     assert e.portrait_path is None
