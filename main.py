@@ -1,68 +1,71 @@
 import sys
-import math
 import os
 import pygame
 from core.entities import Actor, Enemy
 from core.combat import CombatSystem, TickController
+from core.encounters import EncounterPool, DEFAULT_ENCOUNTER_POOLS
+from core.party import DEFAULT_PARTY_TEMPLATES, build_party
 
 class CombatScene:
     def __init__(self, screen, font):
         self.screen = screen
         self.font = font
-        self.a1 = Actor(
-            "Sora",
-            cd=0.2,
-            atk=5,
-            portrait_path=os.path.join("assets", "portraits", "sora.png"),
+        # Party setup lives in core.party; swap templates there or inject your own here.
+        self.party_templates = DEFAULT_PARTY_TEMPLATES
+        self.actors = build_party(self.party_templates)
+        # Encounter selection: swap the default pool or inject a custom EncounterPool.
+        self.encounter_pool = EncounterPool(
+            DEFAULT_ENCOUNTER_POOLS,
+            default_pool="shadowlands",
         )
-        self.a2 = Actor(
-            "Donald",
-            cd=0.3,
-            atk=4,
-            portrait_path=os.path.join("assets", "portraits", "donald.png"),
-        )
-        self.a3 = Actor(
-            "Goofy",
-            cd = 0.4,
-            atk = 3,
-            portrait_path=os.path.join("assets", "portraits", "goofy.png"),
-        )
-        self.enemy = Enemy(
-            hp=100,
-            defense=2,
-            portrait_path=os.path.join("assets", "portraits", "shadow.png"),
-        )
-        self.cs = CombatSystem([self.a1, self.a2], self.enemy)
+        self.enemy = self.encounter_pool.next_enemy()
+        self.cs = CombatSystem(self.actors, self.enemy)
         self.tc = TickController(0.2)
-        self.actor_portraits = [
-            self._load_portrait(self.a1.portrait_path),
-            self._load_portrait(self.a2.portrait_path),
-            self._load_portrait(self.a3.portrait_path)
-        ]
+        self.actor_portraits = [self._load_portrait(actor.portrait_path) for actor in self.actors]
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
-        self.spawn_enemy(self.enemy)
         pass
-    
-    def spawn_enemy(self, enemy):
-        self.enemy = enemy
+
+    def _spawn_enemy(self):
+        self.enemy = self.encounter_pool.next_enemy()
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
-        self.cs.enemy = enemy
+        self.cs.enemy = self.enemy
         pass
 
     def update(self, dt):
         self.tc.update(dt, self.cs.on_tick)
         if self.enemy.health.is_dead():
-            self.spawn_enemy(Enemy(hp=100, defense=2, portrait_path=self.enemy.portrait_path))
+            reward = getattr(self.enemy, "xp_reward", 0)  # Configure per-enemy in encounter pools.
+            for actor in self.actors:
+                actor.gain_xp(reward)
+            self._spawn_enemy()
         pass
 
     def draw(self):
-        self.screen.fill((20,20,20))
-        self._draw_enemy_panel()
-        self._draw_actor_panel(self.a1, self.actor_portraits[0], top=80)
-        self._draw_actor_panel(self.a2, self.actor_portraits[1], top=220)
-        self._draw_actor_panel(self.a3, self.actor_portraits[2], top=360)
+        screen_rect = self.screen.get_rect()
+        self.screen.fill((20, 20, 20))
+        self._draw_enemy_panel(screen_rect=screen_rect)
+
+        portrait_height = self.actor_portraits[0].get_height()
+        spacing = 50  # Control vertical spacing between actor cards.
+        total_height = len(self.actor_portraits) * portrait_height + (len(self.actor_portraits) - 1) * spacing
+        start_y = screen_rect.centery - total_height // 2
+
+        for index, (actor, portrait) in enumerate(zip(self.actors, self.actor_portraits)):
+            top = start_y + index * (portrait_height + spacing)
+            self._draw_actor_panel(
+                actor,
+                portrait,
+                left=screen_rect.left + 60,  # Horizontal anchor for actor portraits.
+                top=top,
+            )
+
         hint = self.font.render("Press ESC to quit", True, (180, 180, 180))
-        self.screen.blit(hint, (40, 500))
+        hint_rect = hint.get_rect()
+        hint_rect.midbottom = (
+            screen_rect.centerx,
+            screen_rect.bottom - 40,
+        )  # Adjust to move the on-screen hint.
+        self.screen.blit(hint, hint_rect)
         pass
 
     def _load_portrait(self, portrait_path, size=(96, 96)):
@@ -78,37 +81,47 @@ class CombatScene:
         pygame.draw.rect(surface, (10, 10, 10), surface.get_rect(), 2)
         return surface.convert_alpha()
 
-    def _draw_enemy_panel(self):
+    def _draw_enemy_panel(self, screen_rect):
         portrait = self.enemy_portrait
         portrait_rect = portrait.get_rect()
-        portrait_rect.topright = (600, 60)
+        portrait_rect.center = (
+            screen_rect.right - portrait_rect.width // 2 - 60,
+            screen_rect.centery,
+        )  # Controls the enemy portrait anchor (right/center).
         self.screen.blit(portrait, portrait_rect)
         text_surface = self.font.render(
             f"Enemy HP: {self.enemy.health.current}", True, (255, 255, 255)
         )
         text_rect = text_surface.get_rect()
-        text_rect.midtop = (portrait_rect.centerx, portrait_rect.bottom + 12)
+        text_rect.midright = (
+            portrait_rect.left - 30,
+            portrait_rect.centery,
+        )  # Move this to change where the enemy HP text sits.
         self.screen.blit(text_surface, text_rect)
 
-    def _draw_actor_panel(self, actor, portrait, *, top):
+    def _draw_actor_panel(self, actor, portrait, *, left, top):
         portrait_rect = portrait.get_rect()
-        portrait_rect.topleft = (40, top)
+        portrait_rect.topleft = (left, top)
         self.screen.blit(portrait, portrait_rect)
-        info_x = portrait_rect.right + 20
+        info_x = (
+            portrait_rect.right + 28
+        )  # Adjust to move the actor stat text relative to the portrait.
+        y = portrait_rect.top
         stats = [
             f"{actor.name}",
             f"HP: {actor.health.current}/{actor.health.max}",
             f"MP: {actor.mana.current}/{actor.mana.max}",
+            f"Level: {actor.level}",
+            f"XP: {actor.xp}/{actor.xp_to_level}",
         ]
-        y = portrait_rect.top
         for line in stats:
             surf = self.font.render(line, True, (255, 255, 255))
             self.screen.blit(surf, (info_x, y))
-            y += 32
+            y += 28
     
 def run_combat_ui():
     pygame.init()
-    screen = pygame.display.set_mode((800, 600))
+    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     font = pygame.font.Font("assets/Orbitron-VariableFont_wght.ttf", 24)
     scene = CombatScene(screen, font)
     clock = pygame.time.Clock()
@@ -125,66 +138,6 @@ def run_combat_ui():
         scene.draw()
         pygame.display.flip()
     pygame.quit()
-
-
-# def run_shop_ui():
-#     import pygame
-#     import item
-
-#     print("Mode: Shop UI | Python:", sys.executable)
-
-#     pygame.init()
-#     WIDTH, HEIGHT = 640, 408
-#     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-#     pygame.display.set_caption("Item Shop")
-
-#     shop = item.Item("Shop", 1, 1)
-#     money = 10
-
-#     font_path = "assets/Orbitron-VariableFont_wght.ttf"
-#     font_size = 32
-
-#     font = pygame.font.Font(font_path, font_size)
-
-#     button_rect = pygame.Rect(250, 300, 140, 50)
-
-#     running = True
-#     while running:
-#         for event in pygame.event.get():
-#             if event.type == pygame.QUIT:
-#                 running = False
-#             elif event.type == pygame.MOUSEBUTTONDOWN:
-#                 if button_rect.collidepoint(event.pos):
-#                     if money >= shop.price:
-#                         money -= shop.price
-#                         money = math.ceil(money * 100) / 100
-#                         shop.purchase()
-#                     else:
-#                         print("Not Enough Gold!")
-
-#         screen.fill((30, 30, 30))
-
-#         # Draw item info
-#         item_text = font.render(
-#             f"Item: {shop.name} - Price: {shop.price} - Stat: {shop.stat}",
-#             True,
-#             (255, 255, 255),
-#         )
-#         screen.blit(item_text, (50, 50))
-
-#         # Draw player's gold
-#         gold_text = font.render(f"Gold: {money}", True, (255, 215, 0))
-#         screen.blit(gold_text, (50, 100))
-
-#         # Draw purchase button
-#         pygame.draw.rect(screen, (70, 130, 180), button_rect)
-#         btn_text = font.render("Purchase", True, (255, 255, 255))
-#         screen.blit(btn_text, (button_rect.x + 20, button_rect.y + 10))
-
-#         pygame.display.flip()
-
-#     pygame.quit()
-
 
 def run_combat_demo():
     """Headless demo: simulate combat ticks and print events."""

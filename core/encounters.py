@@ -10,7 +10,7 @@ class EncounterPool:
     def __init__(self, pools: Dict[str, Iterable[dict]], *, default_pool: str):
         if default_pool not in pools:
             raise KeyError(f"Unknown enemy pool '{default_pool}'")
-        # Store each pool as a list of shallow copies so templates stay immutable.
+        # Copy each template so edits here never mutate the caller's data structures.
         self._pools: Dict[str, List[dict]] = {
             name: [dict(entry) for entry in entries] for name, entries in pools.items()
         }
@@ -27,6 +27,7 @@ class EncounterPool:
         self._current_pool = pool_name
 
     def add_enemy(self, pool_name: str, template: dict) -> None:
+        # Append a new template to a pool; handy when tweaking encounters at runtime.
         self._pools.setdefault(pool_name, []).append(dict(template))
 
     def next_enemy(self) -> Enemy:
@@ -41,6 +42,7 @@ class EncounterPool:
 
 
 DEFAULT_ENCOUNTER_POOLS = {
+    # Edit these entries (or add more pools) to control what the UI can spawn.
     "shadowlands": [
         {
             "hp": 25,
