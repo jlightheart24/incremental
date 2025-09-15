@@ -7,5 +7,7 @@ def test_actor_enemy_wiring():
     assert a.health.current == 7
     assert a.mana.max == 3
     assert a.attack_profile.cooldown_s == 0.2
+    assert a.portrait_path is None
     assert e.stats.defense == 3
     assert e.health.current == 9
+    assert e.portrait_path is None

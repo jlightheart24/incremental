@@ -1,5 +1,6 @@
 import sys
 import math
+import os
 import pygame
 from core.entities import Actor, Enemy
 from core.combat import CombatSystem, TickController
@@ -8,36 +9,98 @@ class CombatScene:
     def __init__(self, screen, font):
         self.screen = screen
         self.font = font
-        self.a1 = Actor("A1", cd=0.2, atk=5)
-        self.a2 = Actor("A2", cd=0.3, atk=4)
-        self.enemy = Enemy(hp=18, defense=2)
+        self.a1 = Actor(
+            "Sora",
+            cd=0.2,
+            atk=5,
+            portrait_path=os.path.join("assets", "portraits", "sora.png"),
+        )
+        self.a2 = Actor(
+            "Donald",
+            cd=0.3,
+            atk=4,
+            portrait_path=os.path.join("assets", "portraits", "donald.png"),
+        )
+        self.a3 = Actor(
+            "Goofy",
+            cd = 0.4,
+            atk = 3,
+            portrait_path=os.path.join("assets", "portraits", "goofy.png"),
+        )
+        self.enemy = Enemy(
+            hp=18,
+            defense=2,
+            portrait_path=os.path.join("assets", "portraits", "shadow.png"),
+        )
         self.cs = CombatSystem([self.a1, self.a2], self.enemy)
         self.tc = TickController(0.2)
+        self.actor_portraits = [
+            self._load_portrait(self.a1.portrait_path),
+            self._load_portrait(self.a2.portrait_path),
+            self._load_portrait(self.a3.portrait_path)
+        ]
+        self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
         pass
-    
+
     def update(self, dt):
         if not self.enemy.health.is_dead():
             self.tc.update(dt, self.cs.on_tick)
         pass
-    
+
     def draw(self):
         self.screen.fill((20,20,20))
-        lines = [
-            f"Enemy HP: {self.enemy.health.current}",
-            f"{self.a1.name} HP: {self.a1.health.current} MP: {self.a1.mana.current}",
-            f"{self.a2.name} HP: {self.a2.health.current} MP: {self.a2.mana.current}",
-            "Press ESC to quit",
-        ]
-        y = 60
-        for line in lines:
-            surf = self.font.render(line, True, (255,255,255))
-            self.screen.blit(surf, (40, y))
-            y+=40
+        self._draw_enemy_panel()
+        self._draw_actor_panel(self.a1, self.actor_portraits[0], top=80)
+        self._draw_actor_panel(self.a2, self.actor_portraits[1], top=220)
+        self._draw_actor_panel(self.a3, self.actor_portraits[2], top=360)
+        hint = self.font.render("Press ESC to quit", True, (180, 180, 180))
+        self.screen.blit(hint, (40, 500))
         pass
+
+    def _load_portrait(self, portrait_path, size=(96, 96)):
+        surface = pygame.Surface(size)
+        surface.fill((60, 60, 60))
+        if portrait_path and os.path.exists(portrait_path):
+            try:
+                image = pygame.image.load(portrait_path)
+                surface = pygame.transform.smoothscale(image, size)
+            except pygame.error:
+                # Keep fallback surface if the image fails to load.
+                pass
+        pygame.draw.rect(surface, (10, 10, 10), surface.get_rect(), 2)
+        return surface.convert_alpha()
+
+    def _draw_enemy_panel(self):
+        portrait = self.enemy_portrait
+        portrait_rect = portrait.get_rect()
+        portrait_rect.topright = (600, 60)
+        self.screen.blit(portrait, portrait_rect)
+        text_surface = self.font.render(
+            f"Enemy HP: {self.enemy.health.current}", True, (255, 255, 255)
+        )
+        text_rect = text_surface.get_rect()
+        text_rect.midtop = (portrait_rect.centerx, portrait_rect.bottom + 12)
+        self.screen.blit(text_surface, text_rect)
+
+    def _draw_actor_panel(self, actor, portrait, *, top):
+        portrait_rect = portrait.get_rect()
+        portrait_rect.topleft = (40, top)
+        self.screen.blit(portrait, portrait_rect)
+        info_x = portrait_rect.right + 20
+        stats = [
+            f"{actor.name}",
+            f"HP: {actor.health.current}/{actor.health.max}",
+            f"MP: {actor.mana.current}/{actor.mana.max}",
+        ]
+        y = portrait_rect.top
+        for line in stats:
+            surf = self.font.render(line, True, (255, 255, 255))
+            self.screen.blit(surf, (info_x, y))
+            y += 32
     
 def run_combat_ui():
     pygame.init()
-    screen = pygame.display.set_mode((640, 480))
+    screen = pygame.display.set_mode((800, 600))
     font = pygame.font.Font("assets/Orbitron-VariableFont_wght.ttf", 24)
     scene = CombatScene(screen, font)
     clock = pygame.time.Clock()
