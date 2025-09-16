@@ -15,17 +15,37 @@ class Scene:
 
     def draw(self, surface):
         pass
+    
+class Manager:
+    def __init__(self, initial_scene: Scene):
+        self.current_scene = initial_scene
+
+    def set_scene(self, scene: Scene):
+        self.current_scene = scene
+
+    def update(self, dt):
+        self.current_scene.update(dt)
+
+    def handle_event(self, event):
+        self.current_scene.handle_event(event)
+
+    def draw(self, surface):
+        self.current_scene.draw(surface)
 
 class BattleScene(Scene):
     def __init__(self, font):
         self.font = font
-        self.enemy = EncounterPool(DEFAULT_ENCOUNTER_POOLS, default_pool="shadowlands").next_enemy()
+        self.encounter_pool = EncounterPool(
+            DEFAULT_ENCOUNTER_POOLS,
+            default_pool="shadowlands",
+        )
+        self.enemy = self.encounter_pool.next_enemy()
         self.actors = build_party(DEFAULT_PARTY_TEMPLATES)
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
         self.actor_portraits = [self._load_portrait(actor.portrait_path) for actor in self.actors]
         self.cs = CombatSystem(self.actors, self.enemy)
         self.tc = TickController(0.2)
-        self.available_spells = spell_ids
+        self.available_spells = spell_ids()
         
 
     def cycle_actor_spell(self, actor_index: int) -> None:
@@ -43,7 +63,7 @@ class BattleScene(Scene):
         actor.set_spell(next_id)    
     
     def _spawn_enemy(self):
-        self.enemy = EncounterPool(DEFAULT_ENCOUNTER_POOLS, default_pool="shadowlands").next_enemy()
+        self.enemy = self.encounter_pool.next_enemy()
         self.cs.enemy = self.enemy
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
         
@@ -149,3 +169,20 @@ class BattleScene(Scene):
             for actor in self.actors:
                 actor.gain_xp(reward)
             self._spawn_enemy()
+            
+class MainMenu(Scene):
+    def __init__(self, font, *, change_scene):
+        self.font = font
+        self.change_scene = change_scene
+        
+    def draw(self, surface):
+        screen_rect = surface.get_rect()
+        surface.fill((30, 30, 30))
+        title = self.font.render("Main Menu - Press Enter to Start Battle", True, (255, 255, 255))
+        title_rect = title.get_rect(center = screen_rect.center)
+        surface.blit(title, title_rect)
+        
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                self.change_scene(BattleScene(self.font))
