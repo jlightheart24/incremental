@@ -25,6 +25,8 @@ class Item:
 
 KEY_DB: Dict[str, Item] = {
     "kingdom_key": Item("Kingdom Key", "keyblade", atk=1, mp=1),
+    "mages_staff": Item("Mage's Staff", "keyblade", atk=2, mp=2),
+    "knights_shield": Item("Knight's Shield", "keyblade", atk=1, defense=1),
 }
 
 ARMOR_DB: Dict[str, Item] = {

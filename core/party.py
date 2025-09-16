@@ -48,6 +48,7 @@ DEFAULT_PARTY_TEMPLATES: Iterable[dict] = [
         "atk": 5,
         "portrait_path": ("assets", "portraits", "sora.png"),
         "spell_id": "fire",
+        "loadout": ["kingdom_key"]
     },
     {
         "name": "Donald",
@@ -55,6 +56,7 @@ DEFAULT_PARTY_TEMPLATES: Iterable[dict] = [
         "atk": 4,
         "portrait_path": ("assets", "portraits", "donald.png"),
         "spell_id": "blizzard",
+        "loadout": ["mages_staff"]
     },
     {
         "name": "Goofy",
@@ -62,5 +64,6 @@ DEFAULT_PARTY_TEMPLATES: Iterable[dict] = [
         "atk": 3,
         "portrait_path": ("assets", "portraits", "goofy.png"),
         "spell_id": "thunder",
+        "loadout": ["knights_shield"]
     },
 ]

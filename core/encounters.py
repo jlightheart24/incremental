@@ -36,8 +36,8 @@ class EncounterPool:
             raise ValueError(f"Enemy pool '{self._current_pool}' is empty")
         template = dict(self._rng.choice(candidates))
         xp_reward = template.pop("xp_reward", 0)
-        enemy = Enemy(**template)
-        enemy.xp_reward = xp_reward
+        drops = template.pop("drops", None)
+        enemy = Enemy(**template, xp_reward=xp_reward, drops=drops)
         return enemy
 
 
@@ -50,6 +50,12 @@ DEFAULT_ENCOUNTER_POOLS = {
             "defense": 1,
             "portrait_path": "assets/portraits/enemies/shadow.png",
             "xp_reward": 10,
+            "drops": [
+                {
+                    "item_id": "elven_bandana",
+                    "chance": 0.3,
+                }
+            ],
         },
         {
             "hp": 100,
@@ -57,6 +63,12 @@ DEFAULT_ENCOUNTER_POOLS = {
             "defense": 2,
             "portrait_path": "assets/portraits/enemies/soldier.png",
             "xp_reward": 25,
+            "drops": [
+                {
+                    "item_id": "champion_belt",
+                    "chance": 0.3,
+                }
+            ],
         }
     ]
 }

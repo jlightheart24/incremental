@@ -1,11 +1,13 @@
 import pygame
 import os
+import random
 from core.combat import CombatSystem, TickController
 from core.entities import Actor, Enemy
 from core.encounters import EncounterPool, DEFAULT_ENCOUNTER_POOLS
 from core.party import DEFAULT_PARTY_TEMPLATES, build_party
 from core.spells import spell_ids
 from core.inventory import Inventory
+from core.items import get_item
 
 class Scene:
     def update(self, dt):
@@ -42,13 +44,15 @@ class BattleScene(Scene):
             default_pool="shadowlands",
         )
         self.enemy = self.encounter_pool.next_enemy()
-        self.inventory = Inventory()
+        self.inventory = Inventory(keyblade_slots=3, armor_slots=10, accessory_slots=10)
         self.actors = build_party(DEFAULT_PARTY_TEMPLATES, inventory=self.inventory)
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
         self.actor_portraits = [self._load_portrait(actor.portrait_path) for actor in self.actors]
         self.cs = CombatSystem(self.actors, self.enemy)
         self.tc = TickController(0.2)
         self.available_spells = spell_ids()
+        self._rng = random.Random()
+        self._recent_drop_messages = []
         self._inventory_button_rect = pygame.Rect(0, 0, 0, 0)
         self._inventory_button_label = self.font.render("Inventory", True, (0, 0, 0))
         
@@ -71,7 +75,28 @@ class BattleScene(Scene):
         self.enemy = self.encounter_pool.next_enemy()
         self.cs.enemy = self.enemy
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
-        
+
+    def _grant_enemy_drops(self, enemy) -> list:
+        messages = []
+        for drop in getattr(enemy, "drops", []):
+            item_id = drop.get("item_id")
+            if not item_id:
+                continue
+            chance = float(drop.get("chance", 1.0))
+            if self._rng.random() > chance:
+                continue
+            item = get_item(item_id)
+            try:
+                self.inventory.add_item(item_id)
+            except ValueError:
+                messages.append(f"Inventory full: {item.name}")
+                continue
+            messages.append(f"Obtained {item.name}!")
+        return messages
+
+    def get_recent_drop_messages(self) -> list:
+        return list(self._recent_drop_messages)
+
 
     def _load_portrait(self, portrait_path, size=(96, 96)):
         surface = pygame.Surface(size)
@@ -190,9 +215,11 @@ class BattleScene(Scene):
     def update(self, dt):
         self.tc.update(dt, self.cs.on_tick)
         if self.enemy.health.is_dead():
-            reward = getattr(self.enemy, "xp_reward", 0)  # Configure per-enemy in encounter pools.
+            defeated_enemy = self.enemy
+            reward = getattr(defeated_enemy, "xp_reward", 0)  # Configure per-enemy in encounter pools.
             for actor in self.actors:
                 actor.gain_xp(reward)
+            self._recent_drop_messages = self._grant_enemy_drops(defeated_enemy)
             self._spawn_enemy()
 
 
@@ -233,6 +260,41 @@ class InventoryScene(Scene):
                 surface.blit(text, (60, top))
                 top += text.get_height() + 6
             top += 20
+
+        column_width = 320
+        inv_left = screen_rect.right - column_width - 60
+        inv_top = self._back_button_rect.bottom + 40
+        inventory_lines = ["Inventory:"]
+        equipped_ids = {
+            item_id
+            for actor in self.actors
+            for item_id, _ in getattr(actor, "equipment", {}).values()
+        }
+        for slot in sorted(self.inventory.items_by_slot.keys()):
+            items = [item_id for item_id in self.inventory.items_by_slot[slot] if item_id not in equipped_ids]
+            if not items:
+                continue
+            inventory_lines.append(f"{slot.title()}s:")
+            for item_id in items:
+                item = get_item(item_id)
+                inventory_lines.append(f"  {item.name} ({item_id})")
+        if len(inventory_lines) == 1:
+            inventory_lines.append("  (Empty)")
+
+        for line in inventory_lines:
+            text = self.font.render(line, True, (230, 230, 230))
+            surface.blit(text, (inv_left, inv_top))
+            inv_top += text.get_height() + 6
+
+        drop_messages = []
+        if self.battle_scene is not None and hasattr(self.battle_scene, "get_recent_drop_messages"):
+            drop_messages = self.battle_scene.get_recent_drop_messages()
+        if drop_messages:
+            inv_top += 20
+            for message in drop_messages:
+                text = self.font.render(message, True, (250, 220, 120))
+                surface.blit(text, (inv_left, inv_top))
+                inv_top += text.get_height() + 6
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
