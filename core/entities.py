@@ -48,8 +48,6 @@ class Actor:
             self.stats.mp_max += 2
             self.health.max += 5
             self.health.current = self.health.max
-            self.mana.max += 2
-            self.mana.current = self.mana.max
             self.xp_to_level = 100 + (self.level - 1) * 50
         pass
     

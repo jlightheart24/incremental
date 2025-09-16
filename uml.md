@@ -181,5 +181,14 @@ stateDiagram-v2
 - **Rendering**: pygame aware (`Entity ..|> Sprite`, RenderSystem with layered groups).
 - **HUD**: Party on left, vertical; circular portraits with inner HP arc + outer MP arc + tail bars. Enemy on right with circular portrait + HP arc.
 - **SaveData**: party composition, character snapshots (stats, xp, mana, spells), prestige, story flags. Inventory/depth later.
-
+- **Inventory System**: add inventory mananagment with loadouts as well as leveling up equipment
+- **Synthesis System** add sythesising different materials into potions and ether etc. as well as equipment
+- **Combo System** quick time events on different abilities such as sonic blade and strike raid
+- **World Select** Ability to go between worlds. Specific fourth party members on specific worlds. Multiple parties in different worlds???
+- **AP system** AP collected over time ability loadout with AP
+- **Drive system** add in drive and forms
+- **Dive to the heart** add dive to the heart at the beginning of the game
+- **Boss Batles** different functionality for boss battle. Add gimics to boss battles. bosses become able to idle after first victory.
+- **Make a board** enemies on board move towards you
+- **GUMMY SHIP** GUMMY SHIP
 ---
