@@ -1,13 +1,15 @@
 import sys
 import pygame
 from core.entities import Actor, Enemy
-from core.scene import BattleScene
+from core.scene import BattleScene, Manager, MainMenu
     
-def run_combat_ui():
+def run_game():
     pygame.init()
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     font = pygame.font.Font("assets/Orbitron-VariableFont_wght.ttf", 24)
-    scene = BattleScene(font)
+    manager = Manager(None)
+    menu = MainMenu(font, change_scene=manager.set_scene)
+    manager.set_scene(menu)
     clock = pygame.time.Clock()
     running = True
     while running:
@@ -18,14 +20,9 @@ def run_combat_ui():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                elif event.key == pygame.K_1:
-                    scene.cycle_actor_spell(0)
-                elif event.key == pygame.K_2:
-                    scene.cycle_actor_spell(1)
-                elif event.key == pygame.K_3:
-                    scene.cycle_actor_spell(2)
-        scene.update(dt)
-        scene.draw(screen)
+        manager.handle_event(event)
+        manager.update(dt)
+        manager.draw(screen)
         pygame.display.flip()
     pygame.quit()
 
@@ -70,4 +67,4 @@ if __name__ == "__main__":
     if "demo" in args:
         run_combat_demo()
     else:
-        run_combat_ui()
+        run_game()

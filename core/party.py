@@ -4,6 +4,7 @@ from typing import Iterable, List, Sequence
 import os
 
 from core.entities import Actor
+from core.inventory import Inventory
 
 
 def _resolve_portrait_path(value):
@@ -15,7 +16,7 @@ def _resolve_portrait_path(value):
     return value
 
 
-def build_party(templates: Sequence[dict]) -> List[Actor]:
+def build_party(templates: Sequence[dict], inventory: Inventory | None = None) -> List[Actor]:
     """Instantiate actors from template dictionaries.
 
     Each template must include a ``name`` key; the rest are forwarded as
@@ -27,9 +28,14 @@ def build_party(templates: Sequence[dict]) -> List[Actor]:
     for template in templates:
         data = dict(template)
         name = data.pop("name")
+        loadout = data.pop("loadout", [])
         portrait_path = _resolve_portrait_path(data.pop("portrait_path", None))
         spell_id = data.pop("spell_id", None)
         actor = Actor(name, portrait_path=portrait_path, spell_id=spell_id, **data)
+        for item_id in loadout:
+            if inventory is not None:
+                inventory.add_item(item_id)
+                inventory.equip_item(actor, item_id)
         party.append(actor)
     return party
 

@@ -25,6 +25,7 @@ class Actor:
         self.mana = Mana(current=0, max=mp_max)
         self.attack_profile = AttackProfile(cooldown_s=cd, mp_gain_on_attack=mp_gain)
         self.attack_state = AttackState()
+        self.equipment = {}
         self.portrait_path = portrait_path
         self.level = level
         self.xp = xp
@@ -34,7 +35,9 @@ class Actor:
         self.spell_id: str | None = None
         if spell_id is not None:
             self.set_spell(spell_id)
+        self.equipment = {}
         pass
+    
     
     def gain_xp(self, amount):
         self.xp += amount

@@ -5,6 +5,7 @@ from core.entities import Actor, Enemy
 from core.encounters import EncounterPool, DEFAULT_ENCOUNTER_POOLS
 from core.party import DEFAULT_PARTY_TEMPLATES, build_party
 from core.spells import spell_ids
+from core.inventory import Inventory
 
 class Scene:
     def update(self, dt):
@@ -40,7 +41,8 @@ class BattleScene(Scene):
             default_pool="shadowlands",
         )
         self.enemy = self.encounter_pool.next_enemy()
-        self.actors = build_party(DEFAULT_PARTY_TEMPLATES)
+        self.inventory = Inventory()
+        self.actors = build_party(DEFAULT_PARTY_TEMPLATES, inventory=self.inventory)
         self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
         self.actor_portraits = [self._load_portrait(actor.portrait_path) for actor in self.actors]
         self.cs = CombatSystem(self.actors, self.enemy)
