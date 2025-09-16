@@ -34,8 +34,9 @@ class Manager:
         self.current_scene.draw(surface)
 
 class BattleScene(Scene):
-    def __init__(self, font):
+    def __init__(self, font, *, change_scene):
         self.font = font
+        self.change_scene = change_scene
         self.encounter_pool = EncounterPool(
             DEFAULT_ENCOUNTER_POOLS,
             default_pool="shadowlands",
@@ -48,6 +49,8 @@ class BattleScene(Scene):
         self.cs = CombatSystem(self.actors, self.enemy)
         self.tc = TickController(0.2)
         self.available_spells = spell_ids()
+        self._inventory_button_rect = pygame.Rect(0, 0, 0, 0)
+        self._inventory_button_label = self.font.render("Inventory", True, (0, 0, 0))
         
 
     def cycle_actor_spell(self, actor_index: int) -> None:
@@ -127,6 +130,16 @@ class BattleScene(Scene):
         surface.fill((20, 20, 20))
         self._draw_enemy_panel(surface, screen_rect)
 
+        button_padding = 16
+        btn_w = self._inventory_button_label.get_width() + button_padding * 2
+        btn_h = self._inventory_button_label.get_height() + button_padding
+        self._inventory_button_rect = pygame.Rect(0, 0, btn_w, btn_h)
+        self._inventory_button_rect.topright = (screen_rect.right - 40, 40)
+        pygame.draw.rect(surface, (200, 200, 200), self._inventory_button_rect)
+        pygame.draw.rect(surface, (50, 50, 50), self._inventory_button_rect, 2)
+        label_rect = self._inventory_button_label.get_rect(center=self._inventory_button_rect.center)
+        surface.blit(self._inventory_button_label, label_rect)
+
         portrait_height = self.actor_portraits[0].get_height()
         spacing = 70  # Control vertical spacing between actor cards.
         total_height = len(self.actor_portraits) * portrait_height + (len(self.actor_portraits) - 1) * spacing
@@ -162,7 +175,17 @@ class BattleScene(Scene):
             elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
                 idx = event.key - pygame.K_1
                 self.cycle_actor_spell(idx)
-        
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self._inventory_button_rect.collidepoint(event.pos):
+                inventory_scene = InventoryScene(
+                    self.font,
+                    change_scene=self.change_scene,
+                    inventory=self.inventory,
+                    actors=self.actors,
+                    battle_scene=self,
+                )
+                self.change_scene(inventory_scene)
+
 
     def update(self, dt):
         self.tc.update(dt, self.cs.on_tick)
@@ -171,6 +194,53 @@ class BattleScene(Scene):
             for actor in self.actors:
                 actor.gain_xp(reward)
             self._spawn_enemy()
+
+
+class InventoryScene(Scene):
+    def __init__(self, font, *, change_scene, inventory: Inventory, actors, battle_scene):
+        self.font = font
+        self.change_scene = change_scene
+        self.inventory = inventory
+        self.actors = actors
+        self.battle_scene = battle_scene
+        self._back_button_rect = pygame.Rect(0, 0, 0, 0)
+        self._back_button_label = self.font.render("Back to Battle", True, (0, 0, 0))
+
+    def draw(self, surface):
+        surface.fill((15, 15, 30))
+        screen_rect = surface.get_rect()
+
+        button_padding = 16
+        btn_w = self._back_button_label.get_width() + button_padding * 2
+        btn_h = self._back_button_label.get_height() + button_padding
+        self._back_button_rect = pygame.Rect(40, 40, btn_w, btn_h)
+        pygame.draw.rect(surface, (200, 200, 200), self._back_button_rect)
+        pygame.draw.rect(surface, (50, 50, 50), self._back_button_rect, 2)
+        label_rect = self._back_button_label.get_rect(center=self._back_button_rect.center)
+        surface.blit(self._back_button_label, label_rect)
+
+        top = self._back_button_rect.bottom + 40
+        for actor in self.actors:
+            lines = [f"{actor.name} Equipment:"]
+            equipment = getattr(actor, "equipment", {})
+            if not equipment:
+                lines.append("  (None equipped)")
+            else:
+                for slot, (item_id, item) in equipment.items():
+                    lines.append(f"  {slot.title()}: {item.name} ({item_id})")
+            for line in lines:
+                text = self.font.render(line, True, (230, 230, 230))
+                surface.blit(text, (60, top))
+                top += text.get_height() + 6
+            top += 20
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self._back_button_rect.collidepoint(event.pos) and self.battle_scene is not None:
+                self.change_scene(self.battle_scene)
+
+    def update(self, dt):
+        pass
             
 class MainMenu(Scene):
     def __init__(self, font, *, change_scene):
@@ -187,4 +257,4 @@ class MainMenu(Scene):
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RETURN:
-                self.change_scene(BattleScene(self.font))
+                self.change_scene(BattleScene(self.font, change_scene=self.change_scene))
