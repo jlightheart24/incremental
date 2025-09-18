@@ -18,6 +18,20 @@ class Inventory:
         self.items_by_slot: Dict[str, List[str]] = defaultdict(list)
         # Optional flat list for iteration or UI display.
         self.item_list: List[str] = []
+        # Munny (currency) held by the party; treat inventory as the central ledger.
+        self.munny: int = 0
+
+    def add_munny(self, amount: int) -> None:
+        if amount < 0:
+            raise ValueError("Munny amount must be non-negative")
+        self.munny += amount
+
+    def spend_munny(self, amount: int) -> None:
+        if amount < 0:
+            raise ValueError("Munny amount must be non-negative")
+        if amount > self.munny:
+            raise ValueError("Insufficient munny")
+        self.munny -= amount
 
     def add_item(self, item_id: str) -> None:
         item = get_item(item_id)

@@ -70,11 +70,12 @@ class Actor:
         return f"{self.name}(HP={self.health.current}, MP={self.mana.current})"
     
 class Enemy:
-    def __init__(self, *, hp=20, atk=3, defense=2, speed=1, portrait_path=None, xp_reward=50, drops=None):
+    def __init__(self, *, hp=20, atk=3, defense=2, speed=1, portrait_path=None, xp_reward=50, munny_reward=0, drops=None):
         self.stats = Stats(max_hp=hp, atk=atk, defense=defense, speed=speed)
         self.health = Health(current=hp, max=hp)
         self.portrait_path = portrait_path
         self.xp_reward = xp_reward
+        self.munny_reward = munny_reward
         self.drops = list(drops) if drops else []
         pass
     

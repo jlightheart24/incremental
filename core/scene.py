@@ -153,6 +153,8 @@ class BattleScene(Scene):
     def draw(self, surface):
         screen_rect = surface.get_rect()
         surface.fill((20, 20, 20))
+        munny_text = self.font.render(f"Munny: {self.inventory.munny}", True, (250, 220, 120))
+        surface.blit(munny_text, (40, 40))
         self._draw_enemy_panel(surface, screen_rect)
 
         button_padding = 16
@@ -219,7 +221,13 @@ class BattleScene(Scene):
             reward = getattr(defeated_enemy, "xp_reward", 0)  # Configure per-enemy in encounter pools.
             for actor in self.actors:
                 actor.gain_xp(reward)
-            self._recent_drop_messages = self._grant_enemy_drops(defeated_enemy)
+            messages = self._grant_enemy_drops(defeated_enemy)
+            munny_reward = getattr(defeated_enemy, "munny_reward", 0)
+            munny_reward = max(0, int(munny_reward or 0))
+            if munny_reward:
+                self.inventory.add_munny(munny_reward)
+                messages.append(f"Collected {munny_reward} munny.")
+            self._recent_drop_messages = messages
             self._spawn_enemy()
 
 
@@ -264,7 +272,7 @@ class InventoryScene(Scene):
         column_width = 320
         inv_left = screen_rect.right - column_width - 60
         inv_top = self._back_button_rect.bottom + 40
-        inventory_lines = ["Inventory:"]
+        inventory_lines = ["Inventory:", f"  Munny: {self.inventory.munny}"]
         equipped_ids = {
             item_id
             for actor in self.actors
