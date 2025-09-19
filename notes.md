@@ -11,9 +11,9 @@ Later:
 Add item leveling up
 Crafting system
 Synthesis mat drops
-Action Bar
 
 Done:
+Action Bar
 
 Resources:
 https://www.gameuidatabase.com/gameData.php?id=596 : UI for KH3
