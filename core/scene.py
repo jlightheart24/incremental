@@ -8,6 +8,7 @@ from core.party import DEFAULT_PARTY_TEMPLATES, build_party
 from core.spells import spell_ids
 from core.inventory import Inventory
 from core.items import get_item
+from core.ui.actionbar import ActionBar
 
 class Scene:
     def update(self, dt):
@@ -55,6 +56,13 @@ class BattleScene(Scene):
         self._recent_drop_messages = []
         self._inventory_button_rect = pygame.Rect(0, 0, 0, 0)
         self._inventory_button_label = self.font.render("Inventory", True, (0, 0, 0))
+        self.action_bar = ActionBar(
+            font=self.font,
+            on_attack=self._handle_action_attack,
+            on_spell_assign=self._assign_spell_to_actor,
+            get_party=lambda: self.actors,
+            get_spells=self._spells_for_actor,
+        )
         
 
     def cycle_actor_spell(self, actor_index: int) -> None:
@@ -70,6 +78,24 @@ class BattleScene(Scene):
             current_idx = -1
         next_id = self.available_spells[(current_idx + 1) % len(self.available_spells)]
         actor.set_spell(next_id)    
+
+    def _handle_action_attack(self) -> None:
+        if self.enemy.health.is_dead():
+            return
+        for actor in self.actors:
+            if actor.health.is_dead():
+                continue
+            self.cs.basic_attack(actor, self.enemy)
+            break
+
+    def _assign_spell_to_actor(self, actor_index: int, spell_id: str) -> None:
+        if not (0 <= actor_index < len(self.actors)):
+            return
+        actor = self.actors[actor_index]
+        actor.set_spell(spell_id)
+
+    def _spells_for_actor(self, actor_index: int | None):
+        return list(self.available_spells)
     
     def _spawn_enemy(self):
         self.enemy = self.encounter_pool.next_enemy()
@@ -182,6 +208,21 @@ class BattleScene(Scene):
                 top=top,
             )
 
+        max_button_count = max(
+            2,
+            len(self.actors),
+            len(self.available_spells) if self.available_spells else 0,
+        )
+        bar_height = self.action_bar.estimate_height(max_button_count)
+        bar_margin = 40
+        bar_rect = pygame.Rect(
+            screen_rect.left + bar_margin,
+            screen_rect.bottom - bar_height - bar_margin,
+            self.action_bar.width(),
+            bar_height,
+        )
+        self.action_bar.draw(surface, bar_rect)
+
         hint = self.font.render(
             "ESC: Quit | 1-3: Cycle Spells",
             True,
@@ -195,6 +236,8 @@ class BattleScene(Scene):
         surface.blit(hint, hint_rect)
 
     def handle_event(self, event):
+        if self.action_bar.handle_event(event):
+            return
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 # You might want to signal scene change or quit here

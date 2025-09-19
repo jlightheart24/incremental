@@ -13,5 +13,7 @@ Crafting system
 Synthesis mat drops
 Action Bar
 
+Done:
+
 Resources:
 https://www.gameuidatabase.com/gameData.php?id=596 : UI for KH3
