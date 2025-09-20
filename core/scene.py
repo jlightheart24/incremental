@@ -366,19 +366,9 @@ class InventoryScene(Scene):
         item_height = 42
         item_gap = 10
 
-        equipped_ids = {
-            item_id
-            for actor in self.actors
-            for item_id, _ in getattr(actor, "equipment", {}).values()
-        }
-
         available_items = []
         for slot in ("keyblade", "armor", "accessory"):
-            slot_items = [
-                item_id
-                for item_id in self.inventory.items_by_slot.get(slot, [])
-                if item_id not in equipped_ids
-            ]
+            slot_items = list(self.inventory.items_by_slot.get(slot, []))
             if slot_items:
                 counts: dict[str, int] = OrderedDict()
                 for item_id in slot_items:
@@ -404,7 +394,7 @@ class InventoryScene(Scene):
                     if self._selected_item_id == item_id:
                         pygame.draw.rect(surface, (60, 150, 200), item_rect, width=3)
 
-                    label = f"{item.name} ({item_id})"
+                    label = item.name
                     if count > 1:
                         label = f"{label} x{count}"
                     label_surf = self.font.render(label, True, (220, 220, 230))
