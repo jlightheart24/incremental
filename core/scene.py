@@ -1,6 +1,7 @@
 import pygame
 import os
 import random
+from collections import OrderedDict
 from core.combat import CombatSystem, TickController
 from core.entities import Actor, Enemy
 from core.encounters import EncounterPool, DEFAULT_ENCOUNTER_POOLS
@@ -284,6 +285,7 @@ class InventoryScene(Scene):
         self._back_button_rect = pygame.Rect(0, 0, 0, 0)
         self._back_button_label = self.font.render("Back to Battle", True, (0, 0, 0))
         self._selected_item_id: str | None = None
+        self._selected_item_slot: str | None = None
         self._selected_slot: tuple[int, str] | None = None
         self._item_buttons = []
         self._slot_buttons = []
@@ -295,16 +297,12 @@ class InventoryScene(Scene):
         self._item_buttons = []
         
         panel_left = 60
-        panel_top = self._back_button_rect.bottom + 40
-        panel_width = 200
+        panel_width = 220
         panel_padding = 12
         slot_height = 48
         slot_spacing = 8
-        header_color = (255,255,255)
-        slot_bg = (45,45,70)
-        slot_border = (90,90,140)
-        
-        
+        slot_bg = (45, 45, 70)
+        slot_border = (90, 90, 140)
 
         button_padding = 16
         btn_w = self._back_button_label.get_width() + button_padding * 2
@@ -315,67 +313,115 @@ class InventoryScene(Scene):
         label_rect = self._back_button_label.get_rect(center=self._back_button_rect.center)
         surface.blit(self._back_button_label, label_rect)
 
+        panel_top = self._back_button_rect.bottom + 40
         y = panel_top
         for idx, actor in enumerate(self.actors):
-            # Actor header
-            name_surf = self.font.render(actor.name, True, (245,245,255))
+            name_surf = self.font.render(actor.name, True, (245, 245, 255))
             surface.blit(name_surf, (panel_left, y))
             y += name_surf.get_height() + panel_padding
-            
-            equiment = getattr(actor, "equipment", {})
-            for slot in ("keyblade", "armor", "accesory"):
+
+            equipment = getattr(actor, "equipment", {})
+            for slot in ("keyblade", "armor", "accessory"):
                 slot_rect = pygame.Rect(panel_left, y, panel_width, slot_height)
-                pygame.draw.rect(surface, (45,45,70), slot_rect)
-                pygame.draw.rect(surface, (90,90,140), slot_rect, width = 2)
-                
+                pygame.draw.rect(surface, slot_bg, slot_rect)
+                pygame.draw.rect(surface, slot_border, slot_rect, width=2)
+
                 if self._selected_slot == (idx, slot):
-                    pygame.draw.rect(surface, (200,170,60), slot_rect, width = 3)
-                    
+                    pygame.draw.rect(surface, (200, 170, 60), slot_rect, width=3)
+
                 item_name = "(Empty)"
-                if slot in equiment:
-                    equipped_id, equipped_item = equiment[slot]
+                if slot in equipment:
+                    equipped_id, equipped_item = equipment[slot]
                     item_name = f"{equipped_item.name} ({equipped_id})"
                 label = f"{slot.title()}: {item_name}"
-                label_surf = self.font.render(label, True, (220,220,230))
+                label_surf = self.font.render(label, True, (220, 220, 230))
                 label_rect = label_surf.get_rect()
                 label_rect.midleft = (slot_rect.left + 12, slot_rect.centery)
                 surface.blit(label_surf, label_rect)
-                
-                self._slot_buttons.append({
-                    "rect": slot_rect,
-                    "payload": {"actor_index": idx, "slot":slot}
-                })
-                
+
+                self._slot_buttons.append(
+                    {
+                        "rect": slot_rect,
+                        "payload": {"actor_index": idx, "slot": slot},
+                    }
+                )
+
                 y += slot_height + slot_spacing
-                
-            y += panel_padding*2
-                                  
+
+            y += panel_padding * 2
+
         column_width = 320
         inv_left = screen_rect.right - column_width - 60
         inv_top = self._back_button_rect.bottom + 40
-        inventory_lines = ["Inventory:", f"  Munny: {self.inventory.munny}"]
+
+        header = self.font.render("Inventory", True, (235, 235, 235))
+        surface.blit(header, (inv_left, inv_top))
+        inv_top += header.get_height() + 10
+
+        munny_text = self.font.render(f"Munny: {self.inventory.munny}", True, (230, 230, 230))
+        surface.blit(munny_text, (inv_left, inv_top))
+        inv_top += munny_text.get_height() + 18
+
+        item_width = column_width
+        item_height = 42
+        item_gap = 10
+
         equipped_ids = {
             item_id
             for actor in self.actors
             for item_id, _ in getattr(actor, "equipment", {}).values()
         }
-        
-        for slot in sorted(self.inventory.items_by_slot.keys()):
-            items = [item_id for item_id in self.inventory.items_by_slot[slot] if item_id not in equipped_ids]
-            if not items:
-                continue
-            inventory_lines.append(f"{slot.title()}s:")
-            for item_id in items:
-                item = get_item(item_id)
-                inventory_lines.append(f"  {item.name} ({item_id})")
-                
-        if len(inventory_lines) == 1:
-            inventory_lines.append("  (Empty)")
 
-        for line in inventory_lines:
-            text = self.font.render(line, True, (230, 230, 230))
-            surface.blit(text, (inv_left, inv_top))
-            inv_top += text.get_height() + 6
+        available_items = []
+        for slot in ("keyblade", "armor", "accessory"):
+            slot_items = [
+                item_id
+                for item_id in self.inventory.items_by_slot.get(slot, [])
+                if item_id not in equipped_ids
+            ]
+            if slot_items:
+                counts: dict[str, int] = OrderedDict()
+                for item_id in slot_items:
+                    counts[item_id] = counts.get(item_id, 0) + 1
+                available_items.append((slot, counts))
+
+        if not available_items:
+            empty_text = self.font.render("(No unequipped items)", True, (200, 200, 200))
+            surface.blit(empty_text, (inv_left, inv_top))
+            inv_top += empty_text.get_height()
+        else:
+            for slot, item_counts in available_items:
+                slot_header = self.font.render(f"{slot.title()}s", True, (210, 210, 230))
+                surface.blit(slot_header, (inv_left, inv_top))
+                inv_top += slot_header.get_height() + 6
+
+                for item_id, count in item_counts.items():
+                    item = get_item(item_id)
+                    item_rect = pygame.Rect(inv_left, inv_top, item_width, item_height)
+                    pygame.draw.rect(surface, (38, 38, 58), item_rect)
+                    pygame.draw.rect(surface, (80, 80, 120), item_rect, width=2)
+
+                    if self._selected_item_id == item_id:
+                        pygame.draw.rect(surface, (60, 150, 200), item_rect, width=3)
+
+                    label = f"{item.name} ({item_id})"
+                    if count > 1:
+                        label = f"{label} x{count}"
+                    label_surf = self.font.render(label, True, (220, 220, 230))
+                    label_rect = label_surf.get_rect()
+                    label_rect.midleft = (item_rect.left + 12, item_rect.centery)
+                    surface.blit(label_surf, label_rect)
+
+                    self._item_buttons.append(
+                        {
+                            "rect": item_rect,
+                            "payload": {"item_id": item_id, "slot": slot},
+                        }
+                    )
+
+                    inv_top += item_height + item_gap
+
+                inv_top += item_gap
 
         drop_messages = []
         if self.battle_scene is not None and hasattr(self.battle_scene, "get_recent_drop_messages"):
@@ -391,6 +437,45 @@ class InventoryScene(Scene):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self._back_button_rect.collidepoint(event.pos) and self.battle_scene is not None:
                 self.change_scene(self.battle_scene)
+                return
+
+            for button in self._item_buttons:
+                if button["rect"].collidepoint(event.pos):
+                    payload = button["payload"]
+                    item_id = payload["item_id"]
+                    slot = payload["slot"]
+                    if self._selected_item_id == item_id:
+                        self._selected_item_id = None
+                        self._selected_item_slot = None
+                    else:
+                        self._selected_item_id = item_id
+                        self._selected_item_slot = slot
+                    return
+
+            for button in self._slot_buttons:
+                if button["rect"].collidepoint(event.pos):
+                    payload = button["payload"]
+                    actor_index = payload["actor_index"]
+                    slot = payload["slot"]
+                    actor = self.actors[actor_index]
+                    same_slot = self._selected_slot == (actor_index, slot)
+
+                    if self._selected_item_id:
+                        if self._selected_item_slot != slot:
+                            self._selected_slot = (actor_index, slot)
+                            return
+                        try:
+                            self.inventory.equip_item(actor, self._selected_item_id)
+                        except ValueError:
+                            pass
+                        else:
+                            self._selected_item_id = None
+                            self._selected_item_slot = None
+                        self._selected_slot = (actor_index, slot)
+                        return
+
+                    self._selected_slot = (actor_index, slot)
+                    return
 
     def update(self, dt):
         pass
