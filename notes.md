@@ -3,7 +3,6 @@ Leveling up the item doesn't just upgrade the stats but also the number of times
 Prestige the item itself (drops to only one equip higher base stats)
 
 To Do:
-Fix Spell swapping
 Add equip item to character
 show number of items not list
 
@@ -14,6 +13,7 @@ Synthesis mat drops
 
 Done:
 Action Bar
+Fix Spell swapping
 
 Resources:
 https://www.gameuidatabase.com/gameData.php?id=596 : UI for KH3

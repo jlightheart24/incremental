@@ -283,10 +283,28 @@ class InventoryScene(Scene):
         self.battle_scene = battle_scene
         self._back_button_rect = pygame.Rect(0, 0, 0, 0)
         self._back_button_label = self.font.render("Back to Battle", True, (0, 0, 0))
+        self._selected_item_id: str | None = None
+        self._selected_slot: tuple[int, str] | None = None
+        self._item_buttons = []
+        self._slot_buttons = []
 
     def draw(self, surface):
         surface.fill((15, 15, 30))
         screen_rect = surface.get_rect()
+        self._slot_buttons = []
+        self._item_buttons = []
+        
+        panel_left = 60
+        panel_top = self._back_button_rect.bottom + 40
+        panel_width = 200
+        panel_padding = 12
+        slot_height = 48
+        slot_spacing = 8
+        header_color = (255,255,255)
+        slot_bg = (45,45,70)
+        slot_border = (90,90,140)
+        
+        
 
         button_padding = 16
         btn_w = self._back_button_label.get_width() + button_padding * 2
@@ -297,21 +315,41 @@ class InventoryScene(Scene):
         label_rect = self._back_button_label.get_rect(center=self._back_button_rect.center)
         surface.blit(self._back_button_label, label_rect)
 
-        top = self._back_button_rect.bottom + 40
-        for actor in self.actors:
-            lines = [f"{actor.name} Equipment:"]
-            equipment = getattr(actor, "equipment", {})
-            if not equipment:
-                lines.append("  (None equipped)")
-            else:
-                for slot, (item_id, item) in equipment.items():
-                    lines.append(f"  {slot.title()}: {item.name} ({item_id})")
-            for line in lines:
-                text = self.font.render(line, True, (230, 230, 230))
-                surface.blit(text, (60, top))
-                top += text.get_height() + 6
-            top += 20
-
+        y = panel_top
+        for idx, actor in enumerate(self.actors):
+            # Actor header
+            name_surf = self.font.render(actor.name, True, (245,245,255))
+            surface.blit(name_surf, (panel_left, y))
+            y += name_surf.get_height() + panel_padding
+            
+            equiment = getattr(actor, "equipment", {})
+            for slot in ("keyblade", "armor", "accesory"):
+                slot_rect = pygame.Rect(panel_left, y, panel_width, slot_height)
+                pygame.draw.rect(surface, (45,45,70), slot_rect)
+                pygame.draw.rect(surface, (90,90,140), slot_rect, width = 2)
+                
+                if self._selected_slot == (idx, slot):
+                    pygame.draw.rect(surface, (200,170,60), slot_rect, width = 3)
+                    
+                item_name = "(Empty)"
+                if slot in equiment:
+                    equipped_id, equipped_item = equiment[slot]
+                    item_name = f"{equipped_item.name} ({equipped_id})"
+                label = f"{slot.title()}: {item_name}"
+                label_surf = self.font.render(label, True, (220,220,230))
+                label_rect = label_surf.get_rect()
+                label_rect.midleft = (slot_rect.left + 12, slot_rect.centery)
+                surface.blit(label_surf, label_rect)
+                
+                self._slot_buttons.append({
+                    "rect": slot_rect,
+                    "payload": {"actor_index": idx, "slot":slot}
+                })
+                
+                y += slot_height + slot_spacing
+                
+            y += panel_padding*2
+                                  
         column_width = 320
         inv_left = screen_rect.right - column_width - 60
         inv_top = self._back_button_rect.bottom + 40
@@ -321,6 +359,7 @@ class InventoryScene(Scene):
             for actor in self.actors
             for item_id, _ in getattr(actor, "equipment", {}).values()
         }
+        
         for slot in sorted(self.inventory.items_by_slot.keys()):
             items = [item_id for item_id in self.inventory.items_by_slot[slot] if item_id not in equipped_ids]
             if not items:
@@ -329,6 +368,7 @@ class InventoryScene(Scene):
             for item_id in items:
                 item = get_item(item_id)
                 inventory_lines.append(f"  {item.name} ({item_id})")
+                
         if len(inventory_lines) == 1:
             inventory_lines.append("  (Empty)")
 
