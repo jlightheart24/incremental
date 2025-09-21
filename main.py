@@ -3,7 +3,7 @@ import sys
 import pygame
 
 from core.entities import Actor, Enemy
-from core.scene import BattleScene, Manager, MainMenu
+from core.scenes import Manager, MainMenu
 
 def run_game():
     pygame.init()
