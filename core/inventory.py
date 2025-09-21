@@ -7,7 +7,12 @@ from core.items import get_item, Item
 
 
 class Inventory:
-    def __init__(self, keyblade_slots: int = 1, armor_slots: int = 1, accessory_slots: int = 1):
+    def __init__(
+        self,
+        keyblade_slots: int = 1,
+        armor_slots: int = 1,
+        accessory_slots: int = 1,
+    ):
         # Maximum number of unequipped items we can store per slot type.
         self.capacity: Dict[str, int] = {
             "keyblade": int(keyblade_slots),
@@ -18,7 +23,7 @@ class Inventory:
         self.items_by_slot: Dict[str, List[str]] = defaultdict(list)
         # Optional flat list for iteration or UI display.
         self.item_list: List[str] = []
-        # Munny (currency) held by the party; treat inventory as the central ledger.
+        # Munny (currency) held by the party; treat inventory as the ledger.
         self.munny: int = 0
 
     def add_munny(self, amount: int) -> None:
@@ -38,7 +43,9 @@ class Inventory:
         slot = item.slot
         current = self.items_by_slot[slot]
         if len(current) >= self.capacity.get(slot, 0):
-            raise ValueError(f"No free {slot} slots for item '{item_id}'")
+            raise ValueError(
+                f"No free {slot} slots for item '{item_id}'"
+            )
         current.append(item_id)
         self.item_list.append(item_id)
 
@@ -50,7 +57,13 @@ class Inventory:
             actor.equipment = equipment
         return equipment
 
-    def _apply_item_stats(self, actor, item: Item, *, remove: bool = False) -> None:
+    def _apply_item_stats(
+        self,
+        actor,
+        item: Item,
+        *,
+        remove: bool = False,
+    ) -> None:
         multiplier = -1 if remove else 1
         actor.stats.atk += multiplier * int(item.atk)
         actor.stats.defense += multiplier * int(item.defense)
@@ -65,7 +78,9 @@ class Inventory:
         try:
             slot_items.remove(item_id)
         except ValueError as exc:
-            raise ValueError(f"Item '{item_id}' not available in inventory") from exc
+            raise ValueError(
+                f"Item '{item_id}' not available in inventory"
+            ) from exc
         try:
             self.item_list.remove(item_id)
         except ValueError:
@@ -77,11 +92,13 @@ class Inventory:
             # Re-add previously equipped item before replacing it.
             prev_item_id, prev_item = equipment.pop(slot)
             if len(self.items_by_slot[slot]) >= self.capacity.get(slot, 0):
-                # Restore removed item before raising so state stays consistent.
+                # Restore removed item before raising to keep state consistent.
                 slot_items.append(item_id)
                 self.item_list.append(item_id)
                 equipment[slot] = (prev_item_id, prev_item)
-                raise ValueError(f"No free {slot} slots to unequip '{prev_item_id}'")
+                raise ValueError(
+                    f"No free {slot} slots to unequip '{prev_item_id}'"
+                )
             self.items_by_slot[slot].append(prev_item_id)
             self.item_list.append(prev_item_id)
             self._apply_item_stats(actor, prev_item, remove=True)

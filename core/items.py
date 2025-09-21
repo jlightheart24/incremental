@@ -1,7 +1,7 @@
 """Item definitions and lookup helpers."""
 
-from typing import Dict
 import copy
+from typing import Dict
 
 
 class Item:
@@ -9,7 +9,15 @@ class Item:
 
     __slots__ = ("name", "slot", "atk", "defense", "mp")
 
-    def __init__(self, name: str, slot: str, *, atk: int = 0, defense: int = 0, mp: int = 0) -> None:
+    def __init__(
+        self,
+        name: str,
+        slot: str,
+        *,
+        atk: int = 0,
+        defense: int = 0,
+        mp: int = 0,
+    ) -> None:
         self.name = str(name)
         self.slot = str(slot)
         self.atk = int(atk)

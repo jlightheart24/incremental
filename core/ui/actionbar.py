@@ -6,7 +6,15 @@ PADDING = 12
 
 
 class ActionBar:
-    def __init__(self, font, *, on_attack, on_spell_assign, get_party, get_spells):
+    def __init__(
+        self,
+        font,
+        *,
+        on_attack,
+        on_spell_assign,
+        get_party,
+        get_spells,
+    ):
         self._font = font
         self._on_attack = on_attack
         self._on_spell_assign = on_spell_assign
@@ -42,7 +50,12 @@ class ActionBar:
         y = title_rect.bottom + PADDING
         button_width = bar_rect.width - PADDING * 2
         for label, payload in items:
-            btn_rect = pygame.Rect(bar_rect.left + PADDING, y, button_width, BUTTON_HEIGHT)
+            btn_rect = pygame.Rect(
+                bar_rect.left + PADDING,
+                y,
+                button_width,
+                BUTTON_HEIGHT,
+            )
             pygame.draw.rect(surface, (55, 55, 85), btn_rect)
             pygame.draw.rect(surface, border_color, btn_rect, width=2)
 
@@ -105,10 +118,14 @@ class ActionBar:
         party = self._get_party() or []
         for idx, actor in enumerate(party):
             label = getattr(actor, "name", None) or f"Member {idx + 1}"
-            items.append((
-                label, 
-                {"action": "actor_selected",
-                 "actor_index": idx})
+            items.append(
+                (
+                    label,
+                    {
+                        "action": "actor_selected",
+                        "actor_index": idx,
+                    },
+                )
             )
         return items
 
@@ -148,6 +165,3 @@ class ActionBar:
                 self._on_spell_assign(actor_index, spell_id)
             self._selected_actor = None
             self._mode = "root"
-        
-            
-        

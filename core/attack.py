@@ -4,7 +4,10 @@ class AttackProfile:
         self.mp_gain_on_attack = int(mp_gain_on_attack)
 
     def __str__(self):
-        return f"AttackProfile(cd={self.cooldown_s}s, mp+={self.mp_gain_on_attack})"
+        return (
+            "AttackProfile("
+            f"cd={self.cooldown_s}s, mp+={self.mp_gain_on_attack})"
+        )
 
 
 class AttackState:
@@ -22,4 +25,3 @@ class AttackState:
 
     def __str__(self):
         return f"AttackState(t={self.time_since_attack_s:.2f}s)"
-

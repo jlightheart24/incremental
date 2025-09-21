@@ -1,5 +1,6 @@
 from typing import Callable, Iterable
-from core.attack import AttackState, AttackProfile
+
+from core.attack import AttackProfile, AttackState
 from core.damage import calc_damage
 
 
@@ -23,7 +24,10 @@ class TickController:
             self._accum -= self.tick_length_s
 
     def __str__(self) -> str:
-        return f"TickController(dt={self.tick_length_s}s, accum={self._accum:.3f})"
+        return (
+            "TickController("
+            f"dt={self.tick_length_s}s, accum={self._accum:.3f})"
+        )
 
 
 class CombatSystem:
@@ -46,14 +50,14 @@ class CombatSystem:
     def on_tick(self, dt: float) -> None:
         """Advance attack timers and perform basic attacks when ready."""
         if self.enemy.health.is_dead():
-            return # Enemy is already defeated; do nothing
+            return  # Enemy already defeated
         for actor in self.actors:
             if actor.health.is_dead():
-                continue # Skip dead actors
+                continue  # Skip dead actors
             actor.attack_state.tick(dt)
             if actor.attack_state.ready(actor.attack_profile.cooldown_s):
                 self.basic_attack(actor, self.enemy)
-        
+
 
     def basic_attack(self, attacker, defender) -> int:
         """Compute damage and apply it to defender; grant attacker MP.
@@ -71,4 +75,5 @@ class CombatSystem:
         return damage
 
     def __str__(self) -> str:
-        return f"CombatSystem(actors={len(self.actors)}, enemy={type(self.enemy).__name__})"
+        enemy_name = type(self.enemy).__name__
+        return f"CombatSystem(actors={len(self.actors)}, enemy={enemy_name})"

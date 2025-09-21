@@ -15,11 +15,30 @@ class TestAttackState(AttackState):
 
 
 class Actor:
-    def __init__(self, *, hp=10, atk=5, defense=1, speed=1, mp_max=10, cd=0.2, mp_gain=1):
-        self.stats = Stats(max_hp=hp, atk=atk, defense=defense, speed=speed, mp_max=mp_max)
+    def __init__(
+        self,
+        *,
+        hp=10,
+        atk=5,
+        defense=1,
+        speed=1,
+        mp_max=10,
+        cd=0.2,
+        mp_gain=1,
+    ):
+        self.stats = Stats(
+            max_hp=hp,
+            atk=atk,
+            defense=defense,
+            speed=speed,
+            mp_max=mp_max,
+        )
         self.health = Health(current=hp, max=hp)
         self.mana = Mana(current=0, max=mp_max)
-        self.attack_profile = AttackProfile(cooldown_s=cd, mp_gain_on_attack=mp_gain)
+        self.attack_profile = AttackProfile(
+            cooldown_s=cd,
+            mp_gain_on_attack=mp_gain,
+        )
         self.attack_state = TestAttackState()
 
 
@@ -114,8 +133,7 @@ class CombatBasicAttackTests(unittest.TestCase):
         self.assertGreater(a.attack_state.time_since_attack_s, 0.0)
 
         # Act
-        # NOTE: This will fail until CombatSystem.basic_attack and core.damage.calc_damage
-        # are implemented per the TODO/spec (max(1, atk - defense)).
+        # NOTE: Requires damage spec max(1, atk - defense).
         dmg = cs.basic_attack(a, e)
 
         # Assert damage math and HP change
@@ -124,7 +142,11 @@ class CombatBasicAttackTests(unittest.TestCase):
         self.assertEqual(e.health.current, 9 - expected)
 
         # Assert MP granted and clamped to mp_max
-        self.assertEqual(a.mana.current, min(a.mana.max, 0 + a.attack_profile.mp_gain_on_attack))
+        expected_mp = min(
+            a.mana.max,
+            0 + a.attack_profile.mp_gain_on_attack,
+        )
+        self.assertEqual(a.mana.current, expected_mp)
 
         # Assert attack state reset
         self.assertEqual(a.attack_state.time_since_attack_s, 0.0)
@@ -132,4 +154,3 @@ class CombatBasicAttackTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

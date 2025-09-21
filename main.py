@@ -1,8 +1,10 @@
 import sys
+
 import pygame
+
 from core.entities import Actor, Enemy
 from core.scene import BattleScene, Manager, MainMenu
-    
+
 def run_game():
     pygame.init()
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -17,10 +19,11 @@ def run_game():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    running = False
-        manager.handle_event(event)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                running = False
+
+            manager.handle_event(event)
+
         manager.update(dt)
         manager.draw(screen)
         pygame.display.flip()
@@ -28,8 +31,6 @@ def run_game():
 
 def run_combat_demo():
     """Headless demo: simulate combat ticks and print events."""
-    from core.stats import Stats, Health, Mana
-    from core.attack import AttackProfile, AttackState
     from core.combat import CombatSystem, TickController
 
     print("Mode: Combat Demo | Python:", sys.executable)
@@ -37,7 +38,10 @@ def run_combat_demo():
     class LoggingCombat(CombatSystem):
         def basic_attack(self, attacker, defender) -> int:
             dmg = super().basic_attack(attacker, defender)
-            print(f"{attacker.name} hits enemy for {dmg} | Enemy HP: {defender.health.current}")
+            print(
+                f"{attacker.name} hits enemy for {dmg} "
+                f"| Enemy HP: {defender.health.current}"
+            )
             return dmg
 
     # Setup demo combatants
