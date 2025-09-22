@@ -1,7 +1,12 @@
-from typing import Callable, Iterable
+from __future__ import annotations
 
-from core.attack import AttackProfile, AttackState
+from typing import Callable, Iterable, Optional, TYPE_CHECKING
+
 from core.damage import calc_damage
+
+
+if TYPE_CHECKING:
+    from core.entities.character import Character
 
 
 class TickController:
@@ -31,46 +36,74 @@ class TickController:
 
 
 class CombatSystem:
-    """Coordinates basic attacks each tick for a set of actors vs. one enemy.
+    """Coordinates combat ticks between party actors and a single enemy."""
 
-    Expected shape for an actor and enemy:
-      - .stats.atk / .stats.defense
-      - .health.current with .clamp()
-      - .mana.current with .clamp()
-      - .attack_profile.cooldown_s / .mp_gain_on_attack
-      - .attack_state.tick(dt) / .ready(cooldown_s) / .reset()
-
-    NOTE: Fill in the TODOs to wire the behavior.
-    """
-
-    def __init__(self, actors: Iterable, enemy) -> None:
+    def __init__(
+        self,
+        actors: Iterable[Character],
+        enemy: Character,
+        *,
+        select_actor_target: Optional[Callable[[Character], Optional[Character]]] = None,
+        select_enemy_target: Optional[Callable[[Character], Optional[Character]]] = None,
+    ) -> None:
         self.actors = list(actors)
-        self.enemy = enemy
+        self.enemy: Character = enemy
+        self._select_actor_target = (
+            select_actor_target if select_actor_target is not None else self._default_actor_target
+        )
+        self._select_enemy_target = (
+            select_enemy_target if select_enemy_target is not None else self._default_enemy_target
+        )
+
+    def _default_actor_target(self, actor: Character) -> Optional[Character]:
+        return self.enemy
+
+    def _default_enemy_target(self, enemy: Character) -> Optional[Character]:
+        for actor in self.actors:
+            if actor.health.is_dead():
+                continue
+            return actor
+        return None
 
     def on_tick(self, dt: float) -> None:
         """Advance attack timers and perform basic attacks when ready."""
-        if self.enemy.health.is_dead():
-            return  # Enemy already defeated
         for actor in self.actors:
             if actor.health.is_dead():
-                continue  # Skip dead actors
+                continue
             actor.attack_state.tick(dt)
-            if actor.attack_state.ready(actor.attack_profile.cooldown_s):
-                self.basic_attack(actor, self.enemy)
+            if not actor.attack_state.ready(actor.attack_profile.cooldown_s):
+                continue
+            target = self._select_actor_target(actor)
+            if target is None or target.health.is_dead():
+                continue
+            self.basic_attack(actor, target)
 
+        if self.enemy.health.is_dead():
+            return
 
-    def basic_attack(self, attacker, defender) -> int:
+        self.enemy.attack_state.tick(dt)
+        if not self.enemy.attack_state.ready(self.enemy.attack_profile.cooldown_s):
+            return
+
+        target = self._select_enemy_target(self.enemy)
+        if target is None or target.health.is_dead():
+            return
+        self.basic_attack(self.enemy, target)
+
+    def basic_attack(self, attacker: Character, defender: Character) -> int:
         """Compute damage and apply it to defender; grant attacker MP.
         Returns the damage dealt.
         """
         damage = calc_damage(attacker.stats.atk, defender.stats.defense)
-        if attacker.mana.full():
-            damage += attacker.magic_damage
-            attacker.mana.current = 0
+        mana = getattr(attacker, "mana", None)
+        if mana is not None and mana.full():
+            damage += getattr(attacker, "magic_damage", 0)
+            mana.current = 0
         defender.health.current -= damage
         defender.health.clamp()
-        attacker.mana.current += attacker.attack_profile.mp_gain_on_attack
-        attacker.mana.clamp()
+        if mana is not None:
+            mana.current += attacker.attack_profile.mp_gain_on_attack
+            mana.clamp()
         attacker.attack_state.reset()
         return damage
 

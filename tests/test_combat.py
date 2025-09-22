@@ -43,14 +43,20 @@ class Actor:
 
 
 class Enemy:
-    def __init__(self, *, hp=20, atk=3, defense=2, speed=1):
+    def __init__(self, *, hp=20, atk=3, defense=2, speed=1, cd=0.8):
         self.stats = Stats(max_hp=hp, atk=atk, defense=defense, speed=speed)
         self.health = Health(current=hp, max=hp)
+        self.attack_profile = AttackProfile(cooldown_s=cd, mp_gain_on_attack=0)
+        self.attack_state = TestAttackState()
 
 
 class SpyCombat(CombatSystem):
     def __init__(self, actors, enemy):
-        super().__init__(actors, enemy)
+        super().__init__(
+            actors,
+            enemy,
+            select_enemy_target=lambda _: None,
+        )
         self.attacks = []
 
     def basic_attack(self, attacker, defender) -> int:

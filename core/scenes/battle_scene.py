@@ -29,6 +29,8 @@ class BattleScene(Scene):
             accessory_slots=10,
         )
         self.actors = self._build_party()
+        self.actor_positions: dict[Actor, tuple[int, int]] = {}
+        self._assign_actor_slots()
         self.actor_portraits = [
             self._load_portrait(actor.portrait_path)
             for actor in self.actors
@@ -39,11 +41,27 @@ class BattleScene(Scene):
         self._recent_drop_messages: list[str] = []
         self._rng = random.Random()
         self.available_spells = spell_ids()
+        self._ko_timers: dict[Actor, float] = {}
+        self._ko_mana: dict[Actor, int] = {}
+        self._dead_portraits: dict[Actor, pygame.Surface] = {}
         self._spawn_wave()
         current_enemy = self._current_enemy()
         if current_enemy is None:
             raise RuntimeError("Encounter pool did not provide any enemies")
-        self.cs = CombatSystem(self.actors, current_enemy)
+        self.cs = CombatSystem(
+            self.actors,
+            current_enemy,
+            select_actor_target=self._closest_enemy_for,
+            select_enemy_target=self._closest_actor_for,
+        )
+        original_basic_attack = self.cs.basic_attack
+
+        def wrapped_basic_attack(attacker, defender):
+            damage = original_basic_attack(attacker, defender)
+            self._handle_post_attack(attacker, defender)
+            return damage
+
+        self.cs.basic_attack = wrapped_basic_attack
         self.tc = TickController(0.2)
         self._inventory_button_rect = pygame.Rect(0, 0, 0, 0)
         self._inventory_button_label = self.font.render(
@@ -59,6 +77,102 @@ class BattleScene(Scene):
             get_spells=self._spells_for_actor,
         )
 
+
+    @staticmethod
+    def _hex_distance(a: tuple[int, int], b: tuple[int, int]) -> int:
+        aq, ar = a
+        bq, br = b
+        dq = bq - aq
+        dr = br - ar
+        return (abs(dq) + abs(dq + dr) + abs(dr)) // 2
+
+    def _assign_actor_slots(self) -> None:
+        slot_spacing = 2
+        start_r = 1
+        for offset, actor in enumerate(self.actors):
+            slot_r = start_r + offset * slot_spacing
+            self.actor_positions[actor] = (-1, slot_r)
+
+    def _closest_enemy_for(self, actor: Actor) -> Enemy | None:
+        actor_coord = self.actor_positions.get(actor)
+        if not actor_coord:
+            return None
+
+        closest_enemy: Enemy | None = None
+        closest_dist: int | None = None
+
+        for enemy in self.enemies:
+            if enemy.health.is_dead():
+                continue
+            enemy_coord = self.enemy_positions.get(enemy)
+            if not enemy_coord:
+                continue
+            distance = self._hex_distance(actor_coord, enemy_coord)
+            if closest_dist is None or distance < closest_dist:
+                closest_dist = distance
+                closest_enemy = enemy
+
+        return closest_enemy
+
+    def _closest_actor_for(self, enemy: Enemy) -> Actor | None:
+        enemy_coord = self.enemy_positions.get(enemy)
+        if not enemy_coord:
+            return None
+
+        closest_actor: Actor | None = None
+        closest_dist: int | None = None
+
+        for actor, coord in self.actor_positions.items():
+            if actor.health.is_dead():
+                continue
+            distance = self._hex_distance(coord, enemy_coord)
+            if closest_dist is None or distance < closest_dist:
+                closest_dist = distance
+                closest_actor = actor
+
+        return closest_actor
+
+    def _handle_post_attack(self, attacker, defender) -> None:
+        if isinstance(defender, Actor) and defender.health.is_dead():
+            if defender not in self._ko_timers:
+                self._ko_timers[defender] = 5.0
+                if hasattr(defender, "mana"):
+                    self._ko_mana[defender] = defender.mana.current
+                defender.attack_state.reset()
+
+    def _update_ko_timers(self, dt: float) -> None:
+        if not self._ko_timers:
+            return
+        finished: list[Actor] = []
+        for actor, remaining in list(self._ko_timers.items()):
+            remaining -= dt
+            if remaining <= 0:
+                finished.append(actor)
+            else:
+                self._ko_timers[actor] = remaining
+        for actor in finished:
+            self._revive_actor(actor)
+            self._ko_timers.pop(actor, None)
+
+    def _revive_actor(self, actor: Actor) -> None:
+        actor.health.current = actor.health.max
+        actor.health.clamp()
+        if hasattr(actor, "mana"):
+            stored_mana = self._ko_mana.pop(actor, None)
+            if stored_mana is not None:
+                actor.mana.current = stored_mana
+            actor.mana.clamp()
+        actor.attack_state.reset()
+
+    def _dead_portrait_for(self, actor: Actor, base_surface: pygame.Surface) -> pygame.Surface:
+        dead_surface = self._dead_portraits.get(actor)
+        if dead_surface is None:
+            dead_surface = pygame.Surface(base_surface.get_size(), pygame.SRCALPHA)
+            dead_surface.fill((100, 100, 100))
+            pygame.draw.rect(dead_surface, (40, 40, 40), dead_surface.get_rect(), 2)
+            self._dead_portraits[actor] = dead_surface
+        return dead_surface
+    
     def _build_party(self):
         from core.party import DEFAULT_PARTY_TEMPLATES, build_party
 
@@ -84,11 +198,11 @@ class BattleScene(Scene):
         actor.set_spell(next_id)
 
     def _handle_action_attack(self) -> None:
-        enemy = self._current_enemy()
-        if enemy is None or enemy.health.is_dead():
-            return
         for actor in self.actors:
             if actor.health.is_dead():
+                continue
+            enemy = self._closest_enemy_for(actor)
+            if enemy is None:
                 continue
             self.cs.basic_attack(actor, enemy)
             break
@@ -256,7 +370,16 @@ class BattleScene(Scene):
     ) -> None:
         portrait_rect = portrait.get_rect()
         portrait_rect.topleft = (left, top)
-        surface.blit(portrait, portrait_rect)
+        ko_remaining = self._ko_timers.get(actor)
+        portrait_surface = portrait
+        if actor.health.is_dead() or ko_remaining is not None:
+            portrait_surface = self._dead_portrait_for(actor, portrait)
+        surface.blit(portrait_surface, portrait_rect)
+        if ko_remaining is not None:
+            countdown = max(0.0, ko_remaining)
+            timer_label = self.font.render(f"{countdown:.1f}s", True, (255, 255, 255))
+            timer_rect = timer_label.get_rect(center=portrait_rect.center)
+            surface.blit(timer_label, timer_rect)
         info_x = portrait_rect.right + 28
         y = portrait_rect.top
         spell = actor.current_spell
@@ -367,6 +490,7 @@ class BattleScene(Scene):
                 self.change_scene(inventory_scene)
 
     def update(self, dt):
+        self._update_ko_timers(dt)
         current_enemy = self._current_enemy()
         if current_enemy is None:
             self._spawn_wave()

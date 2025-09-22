@@ -1,40 +1,39 @@
-from core.attack import AttackProfile, AttackState
-from core.spells import Spell, get_spell
-from core.stats import Health, Mana, Stats
+from __future__ import annotations
 
-class Actor:
+from core.entities.character import Character
+from core.spells import Spell, get_spell
+from core.stats import Mana
+
+
+class Actor(Character):
     def __init__(
         self,
-        name,
+        name: str,
         *,
-        hp=10,
-        atk=5,
-        defense=1,
-        speed=1,
-        mp_max=10,
-        cd=0.2,
-        mp_gain=1,
-        portrait_path=None,
-        level=1,
-        xp=0,
-        spell_id=None,
-    ):
-        self.name = name
-        self.stats = Stats(
-            max_hp=hp,
+        hp: int = 10,
+        atk: int = 5,
+        defense: int = 1,
+        speed: int = 1,
+        mp_max: int = 10,
+        cd: float = 0.2,
+        mp_gain: int = 1,
+        portrait_path: str | None = None,
+        level: int = 1,
+        xp: int = 0,
+        spell_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            name,
+            hp=hp,
             atk=atk,
             defense=defense,
             speed=speed,
             mp_max=mp_max,
+            cd=cd,
+            mp_gain=mp_gain,
+            portrait_path=portrait_path,
         )
-        self.health = Health(current=hp, max=hp)
         self.mana = Mana(current=0, max=mp_max)
-        self.attack_profile = AttackProfile(
-            cooldown_s=cd,
-            mp_gain_on_attack=mp_gain,
-        )
-        self.attack_state = AttackState()
-        self.portrait_path = portrait_path
         self.level = level
         self.xp = xp
         self.xp_to_level = 100 + (level - 1) * 50
@@ -43,9 +42,9 @@ class Actor:
         self.spell_id: str | None = None
         if spell_id is not None:
             self.set_spell(spell_id)
-        self.equipment = {}
+        self.equipment: dict[str, object] = {}
 
-    def gain_xp(self, amount):
+    def gain_xp(self, amount: int) -> None:
         self.xp += amount
         while self.xp >= self.xp_to_level:
             self.xp -= self.xp_to_level
@@ -59,7 +58,7 @@ class Actor:
             self.health.current = self.health.max
             self.xp_to_level = 100 + (self.level - 1) * 50
 
-    def set_spell(self, spell_id):
+    def set_spell(self, spell_id: str | None) -> None:
         if spell_id is None:
             self.spell_id = None
             self.current_spell = None
@@ -72,29 +71,5 @@ class Actor:
         self.mana.max = spell.mp_max
         self.mana.clamp()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name}(HP={self.health.current}, MP={self.mana.current})"
-
-
-class Enemy:
-    def __init__(
-        self,
-        *,
-        hp=20,
-        atk=3,
-        defense=2,
-        speed=1,
-        portrait_path=None,
-        xp_reward=50,
-        munny_reward=0,
-        drops=None,
-    ):
-        self.stats = Stats(max_hp=hp, atk=atk, defense=defense, speed=speed)
-        self.health = Health(current=hp, max=hp)
-        self.portrait_path = portrait_path
-        self.xp_reward = xp_reward
-        self.munny_reward = munny_reward
-        self.drops = list(drops) if drops else []
-
-    def __str__(self):
-        return f"Enemy(HP={self.health.current})"
