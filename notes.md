@@ -3,7 +3,6 @@ Leveling up the item doesn't just upgrade the stats but also the number of times
 Prestige the item itself (drops to only one equip higher base stats)
 
 To Do:
-Add a board for the enemies to move along
 
 Later:
 Add item leveling up
@@ -15,6 +14,7 @@ Action Bar
 Fix Spell swapping
 add equip item to character
 show number of items not list
+Add a board for the enemies to move along
 
 Resources:
 https://www.gameuidatabase.com/gameData.php?id=596 : UI for KH3
