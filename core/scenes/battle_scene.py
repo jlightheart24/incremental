@@ -5,13 +5,14 @@ import pygame
 
 from core.combat import CombatSystem, TickController
 from core.encounters import DEFAULT_ENCOUNTER_POOLS, EncounterPool
-from core.entities import Actor
+from core.entities import Actor, Enemy
 from core.inventory import Inventory
 from core.items import get_item
 from core.scenes.scene import Scene
 from core.spells import spell_ids
 from core.ui.actionbar import ActionBar
 from core.scenes.inventory_scene import InventoryScene
+from core.scenes.board import HexBoard
 
 
 class BattleScene(Scene):
@@ -22,23 +23,28 @@ class BattleScene(Scene):
             DEFAULT_ENCOUNTER_POOLS,
             default_pool="shadowlands",
         )
-        self.enemy = self.encounter_pool.next_enemy()
         self.inventory = Inventory(
             keyblade_slots=3,
             armor_slots=10,
             accessory_slots=10,
         )
         self.actors = self._build_party()
-        self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
         self.actor_portraits = [
             self._load_portrait(actor.portrait_path)
             for actor in self.actors
         ]
-        self.cs = CombatSystem(self.actors, self.enemy)
-        self.tc = TickController(0.2)
-        self.available_spells = spell_ids()
+        self.enemies: list[Enemy] = []
+        self.enemy_positions: dict[Enemy, tuple[int, int] | None] = {}
+        self.board: HexBoard | None = None
+        self._recent_drop_messages: list[str] = []
         self._rng = random.Random()
-        self._recent_drop_messages = []
+        self.available_spells = spell_ids()
+        self._spawn_wave()
+        current_enemy = self._current_enemy()
+        if current_enemy is None:
+            raise RuntimeError("Encounter pool did not provide any enemies")
+        self.cs = CombatSystem(self.actors, current_enemy)
+        self.tc = TickController(0.2)
         self._inventory_button_rect = pygame.Rect(0, 0, 0, 0)
         self._inventory_button_label = self.font.render(
             "Inventory",
@@ -78,12 +84,13 @@ class BattleScene(Scene):
         actor.set_spell(next_id)
 
     def _handle_action_attack(self) -> None:
-        if self.enemy.health.is_dead():
+        enemy = self._current_enemy()
+        if enemy is None or enemy.health.is_dead():
             return
         for actor in self.actors:
             if actor.health.is_dead():
                 continue
-            self.cs.basic_attack(actor, self.enemy)
+            self.cs.basic_attack(actor, enemy)
             break
 
     def _assign_spell_to_actor(self, actor_index: int, spell_id: str) -> None:
@@ -95,10 +102,33 @@ class BattleScene(Scene):
     def _spells_for_actor(self, actor_index: int | None):
         return list(self.available_spells)
 
-    def _spawn_enemy(self):
-        self.enemy = self.encounter_pool.next_enemy()
-        self.cs.enemy = self.enemy
-        self.enemy_portrait = self._load_portrait(self.enemy.portrait_path)
+    def _spawn_wave(self, *, count: int | None = None) -> None:
+        self._clear_board_enemies()
+        self.enemies.clear()
+        self.enemy_positions.clear()
+        wave_size = count if count is not None else self._rng.randint(2, 4)
+        wave_size = max(1, min(wave_size, self.board.cols * self.board.rows if self.board else wave_size))
+        for _ in range(wave_size):
+            enemy = self.encounter_pool.next_enemy()
+            self.enemies.append(enemy)
+            self.enemy_positions[enemy] = None
+        self._recent_drop_messages = []
+        self._sync_combat_target()
+        if self.board:
+            self._place_enemies_on_board()
+
+    def _current_enemy(self) -> Enemy | None:
+        for enemy in self.enemies:
+            if not enemy.health.is_dead():
+                return enemy
+        return None
+
+    def _sync_combat_target(self) -> None:
+        current = self._current_enemy()
+        if current is None:
+            return
+        if hasattr(self, "cs"):
+            self.cs.enemy = current
 
     def _grant_enemy_drops(self, enemy) -> list:
         messages = []
@@ -120,6 +150,89 @@ class BattleScene(Scene):
 
     def get_recent_drop_messages(self) -> list:
         return list(self._recent_drop_messages)
+
+    def _ensure_board(self, screen_rect: pygame.Rect) -> None:
+        if self.board is None or self.board.screen_rect.size != screen_rect.size:
+            self.board = HexBoard(screen_rect)
+            for enemy in self.enemies:
+                self.enemy_positions[enemy] = None
+        self._place_enemies_on_board()
+
+    def _clear_board_enemies(self) -> None:
+        if not self.board:
+            return
+        for q, r in self.board.tiles():
+            if self.board.occupant_at(q, r) is not None:
+                try:
+                    self.board.remove(q, r)
+                except ValueError:
+                    pass
+
+    def _place_enemies_on_board(self) -> None:
+        if not self.board:
+            return
+        # Remove any stale occupants from previous waves.
+        for q, r in self.board.tiles():
+            occupant = self.board.occupant_at(q, r)
+            if occupant is None:
+                continue
+            if occupant not in self.enemies:
+                try:
+                    self.board.remove(q, r)
+                except ValueError:
+                    pass
+        available = [
+            (q, r)
+            for q, r in self.board.tiles()
+            if self.board.occupant_at(q, r) is None
+        ]
+        self._rng.shuffle(available)
+        for enemy in self.enemies:
+            coord = self.enemy_positions.get(enemy)
+            if coord and self.board.occupant_at(*coord) is enemy:
+                continue
+            if not available:
+                self.enemy_positions[enemy] = None
+                continue
+            coord = available.pop()
+            try:
+                self.board.place(enemy, *coord)
+            except ValueError:
+                self.enemy_positions[enemy] = None
+                continue
+            self.enemy_positions[enemy] = coord
+
+    def _handle_enemy_defeated(self, defeated_enemy: Enemy) -> None:
+        reward = getattr(defeated_enemy, "xp_reward", 0)
+        for actor in self.actors:
+            actor.gain_xp(reward)
+        messages = self._grant_enemy_drops(defeated_enemy)
+        munny_reward = getattr(defeated_enemy, "munny_reward", 0)
+        munny_reward = max(0, int(munny_reward or 0))
+        if munny_reward:
+            self.inventory.add_munny(munny_reward)
+            messages.append(f"Collected {munny_reward} munny.")
+        self._recent_drop_messages = messages
+
+        coord = self.enemy_positions.pop(defeated_enemy, None)
+        if self.board and coord:
+            try:
+                self.board.remove(*coord)
+            except ValueError:
+                pass
+        try:
+            self.enemies.remove(defeated_enemy)
+        except ValueError:
+            pass
+
+        next_enemy = self._current_enemy()
+        if next_enemy is None:
+            self._spawn_wave()
+            next_enemy = self._current_enemy()
+        if next_enemy is not None:
+            self.cs.enemy = next_enemy
+            if self.board:
+                self._place_enemies_on_board()
 
     def _load_portrait(self, portrait_path, size=(96, 96)):
         surface = pygame.Surface(size)
@@ -161,26 +274,9 @@ class BattleScene(Scene):
             surface.blit(surf, (info_x, y))
             y += 28
 
-    def _draw_enemy_panel(self, surface, screen_rect: pygame.Rect) -> None:
-        portrait = self.enemy_portrait
-        portrait_rect = portrait.get_rect()
-        portrait_rect.center = (
-            screen_rect.right - portrait_rect.width // 2 - 60,
-            screen_rect.centery,
-        )
-        surface.blit(portrait, portrait_rect)
-        text_surface = self.font.render(
-            f"Enemy HP: {self.enemy.health.current}", True, (255, 255, 255)
-        )
-        text_rect = text_surface.get_rect()
-        text_rect.midright = (
-            portrait_rect.left - 30,
-            portrait_rect.centery,
-        )
-        surface.blit(text_surface, text_rect)
-
     def draw(self, surface):
         screen_rect = surface.get_rect()
+        self._ensure_board(screen_rect)
         surface.fill((20, 20, 20))
         munny_text = self.font.render(
             f"Munny: {self.inventory.munny}",
@@ -188,7 +284,8 @@ class BattleScene(Scene):
             (250, 220, 120),
         )
         surface.blit(munny_text, (40, 40))
-        self._draw_enemy_panel(surface, screen_rect)
+        if self.board:
+            self.board.draw(surface)
 
         button_padding = 16
         btn_w = self._inventory_button_label.get_width() + button_padding * 2
@@ -270,17 +367,13 @@ class BattleScene(Scene):
                 self.change_scene(inventory_scene)
 
     def update(self, dt):
+        current_enemy = self._current_enemy()
+        if current_enemy is None:
+            self._spawn_wave()
+            current_enemy = self._current_enemy()
+            if current_enemy is None:
+                return
+        self.cs.enemy = current_enemy
         self.tc.update(dt, self.cs.on_tick)
-        if self.enemy.health.is_dead():
-            defeated_enemy = self.enemy
-            reward = getattr(defeated_enemy, "xp_reward", 0)
-            for actor in self.actors:
-                actor.gain_xp(reward)
-            messages = self._grant_enemy_drops(defeated_enemy)
-            munny_reward = getattr(defeated_enemy, "munny_reward", 0)
-            munny_reward = max(0, int(munny_reward or 0))
-            if munny_reward:
-                self.inventory.add_munny(munny_reward)
-                messages.append(f"Collected {munny_reward} munny.")
-            self._recent_drop_messages = messages
-            self._spawn_enemy()
+        if current_enemy.health.is_dead():
+            self._handle_enemy_defeated(current_enemy)
