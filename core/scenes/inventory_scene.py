@@ -4,7 +4,7 @@ import pygame
 
 from core.inventory import Inventory
 from core.items import get_item
-from core.scenes.scene import Scene
+from core.scenes.scene import Manager, Scene
 
 
 class InventoryScene(Scene):
@@ -12,13 +12,13 @@ class InventoryScene(Scene):
         self,
         font,
         *,
-        change_scene,
+        controller: Manager.Controller,
         inventory: Inventory,
         actors,
         battle_scene,
     ):
         self.font = font
-        self.change_scene = change_scene
+        self.controller = controller
         self.inventory = inventory
         self.actors = actors
         self.battle_scene = battle_scene
@@ -33,6 +33,12 @@ class InventoryScene(Scene):
         self._selected_slot: tuple[int, str] | None = None
         self._item_buttons = []
         self._slot_buttons = []
+
+    def blocks_update(self) -> bool:
+        return False
+
+    def blocks_draw(self) -> bool:
+        return False
 
     def _draw_button(
         self,
@@ -222,18 +228,15 @@ class InventoryScene(Scene):
                 surface.blit(text, (inv_left, inv_top))
                 inv_top += text.get_height() + 6
 
-    def handle_event(self, event):
+    def handle_event(self, event) -> bool:
         if (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == 1
         ):
             back_clicked = self._back_button_rect.collidepoint(event.pos)
-            scene_change_requested = (
-                back_clicked and self.battle_scene is not None
-            )
-            if scene_change_requested:
-                self.change_scene(self.battle_scene)
-                return
+            if back_clicked and self.battle_scene is not None:
+                self.controller.pop()
+                return True
 
             for button in self._item_buttons:
                 if button["rect"].collidepoint(event.pos):
@@ -246,7 +249,7 @@ class InventoryScene(Scene):
                     else:
                         self._selected_item_id = item_id
                         self._selected_item_slot = slot
-                    return
+                    return True
 
             for button in self._slot_buttons:
                 if button["rect"].collidepoint(event.pos):
@@ -259,7 +262,7 @@ class InventoryScene(Scene):
                         selected_item_id = self._selected_item_id
                         if self._selected_item_slot != slot:
                             self._selected_slot = (actor_index, slot)
-                            return
+                            return True
                         try:
                             self.inventory.equip_item(actor, selected_item_id)
                         except ValueError:
@@ -268,10 +271,11 @@ class InventoryScene(Scene):
                             self._selected_item_id = None
                             self._selected_item_slot = None
                         self._selected_slot = (actor_index, slot)
-                        return
+                        return True
 
                     self._selected_slot = (actor_index, slot)
-                    return
+                    return True
+        return False
 
     def update(self, dt):
         pass

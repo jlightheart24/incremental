@@ -3,36 +3,94 @@ import pygame
 
 class Scene:
     def update(self, dt):
-        pass
+        return None
 
-    def handle_event(self, event):
-        pass
+    def handle_event(self, event) -> bool:
+        return False
 
     def draw(self, surface):
-        pass
+        return None
+
+    def blocks_update(self) -> bool:
+        return True
+
+    def blocks_input(self) -> bool:
+        return True
+
+    def blocks_draw(self) -> bool:
+        return True
 
 
 class Manager:
-    def __init__(self, initial_scene: Scene):
-        self.current_scene = initial_scene
+    class Controller:
+        def __init__(self, manager: "Manager") -> None:
+            self._manager = manager
 
-    def set_scene(self, scene: Scene):
-        self.current_scene = scene
+        def replace(self, scene: Scene | None) -> None:
+            self._manager.set_scene(scene)
 
-    def update(self, dt):
-        self.current_scene.update(dt)
+        def push(self, scene: Scene) -> None:
+            self._manager.push_scene(scene)
 
-    def handle_event(self, event):
-        self.current_scene.handle_event(event)
+        def pop(self) -> None:
+            self._manager.pop_scene()
 
-    def draw(self, surface):
-        self.current_scene.draw(surface)
+    def __init__(self, initial_scene: Scene | None = None):
+        self._stack: list[Scene] = []
+        self._controller = Manager.Controller(self)
+        if initial_scene is not None:
+            self.set_scene(initial_scene)
+
+    @property
+    def controller(self) -> "Manager.Controller":
+        return self._controller
+
+    def set_scene(self, scene: Scene | None) -> None:
+        self._stack.clear()
+        if scene is not None:
+            self._stack.append(scene)
+
+    def push_scene(self, scene: Scene) -> None:
+        if scene is not None:
+            self._stack.append(scene)
+
+    def pop_scene(self) -> None:
+        if self._stack:
+            self._stack.pop()
+
+    def update(self, dt) -> None:
+        if not self._stack:
+            return
+        start_index = 0
+        for idx in range(len(self._stack) - 1, -1, -1):
+            if self._stack[idx].blocks_update():
+                start_index = idx
+                break
+        for scene in self._stack[start_index:]:
+            scene.update(dt)
+
+    def handle_event(self, event) -> None:
+        for scene in reversed(self._stack):
+            handled = scene.handle_event(event)
+            if handled or scene.blocks_input():
+                break
+
+    def draw(self, surface) -> None:
+        if not self._stack:
+            return
+        start_index = 0
+        for idx in range(len(self._stack) - 1, -1, -1):
+            if self._stack[idx].blocks_draw():
+                start_index = idx
+                break
+        for scene in self._stack[start_index:]:
+            scene.draw(surface)
 
 
 class MainMenu(Scene):
-    def __init__(self, font, *, change_scene):
+    def __init__(self, font, *, controller: Manager.Controller):
         self.font = font
-        self.change_scene = change_scene
+        self.controller = controller
 
     def draw(self, surface):
         screen_rect = surface.get_rect()
@@ -45,11 +103,13 @@ class MainMenu(Scene):
         title_rect = title.get_rect(center=screen_rect.center)
         surface.blit(title, title_rect)
 
-    def handle_event(self, event):
+    def handle_event(self, event) -> bool:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
             # Lazy import to avoid circular dependency during module import.
             from core.scenes.battle_scene import BattleScene
 
-            self.change_scene(
-                BattleScene(self.font, change_scene=self.change_scene)
+            self.controller.replace(
+                BattleScene(self.font, controller=self.controller)
             )
+            return True
+        return False

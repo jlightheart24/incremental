@@ -8,17 +8,19 @@ from core.encounters import DEFAULT_ENCOUNTER_POOLS, EncounterPool
 from core.entities import Actor, Enemy
 from core.inventory import Inventory
 from core.items import get_item
-from core.scenes.scene import Scene
+from core.scenes.scene import Manager, Scene
 from core.spells import spell_ids
 from core.ui.actionbar import ActionBar
+from core.materials import material_name
 from core.scenes.inventory_scene import InventoryScene
 from core.scenes.board import HexBoard
+from core.scenes.synthesis_scene import SynthesisScene
 
 
 class BattleScene(Scene):
-    def __init__(self, font, *, change_scene):
+    def __init__(self, font, *, controller: Manager.Controller):
         self.font = font
-        self.change_scene = change_scene
+        self.controller = controller
         self.encounter_pool = EncounterPool(
             DEFAULT_ENCOUNTER_POOLS,
             default_pool="shadowlands",
@@ -66,6 +68,12 @@ class BattleScene(Scene):
         self._inventory_button_rect = pygame.Rect(0, 0, 0, 0)
         self._inventory_button_label = self.font.render(
             "Inventory",
+            True,
+            (0, 0, 0),
+        )
+        self._synthesis_button_rect = pygame.Rect(0, 0, 0, 0)
+        self._synthesis_button_label = self.font.render(
+            "Synthesis",
             True,
             (0, 0, 0),
         )
@@ -247,19 +255,28 @@ class BattleScene(Scene):
     def _grant_enemy_drops(self, enemy) -> list:
         messages = []
         for drop in getattr(enemy, "drops", []):
-            item_id = drop.get("item_id")
-            if not item_id:
-                continue
             chance = float(drop.get("chance", 1.0))
             if self._rng.random() > chance:
                 continue
-            item = get_item(item_id)
-            try:
-                self.inventory.add_item(item_id)
-            except ValueError:
-                messages.append(f"Inventory full: {item.name}")
-                continue
-            messages.append(f"Obtained {item.name}!")
+            item_id = drop.get("item_id")
+            material_id = drop.get("material_id")
+            amount = int(drop.get("amount", 1) or 1)
+            if item_id:
+                item = get_item(item_id)
+                try:
+                    self.inventory.add_item(item_id)
+                except ValueError:
+                    messages.append(f"Inventory full: {item.name}")
+                    continue
+                messages.append(f"Obtained {item.name}!")
+            elif material_id:
+                try:
+                    self.inventory.add_material(material_id, amount)
+                except ValueError:
+                    continue
+                name = material_name(material_id)
+                suffix = f" x{amount}" if amount > 1 else ""
+                messages.append(f"Obtained {name}{suffix}!")
         return messages
 
     def get_recent_drop_messages(self) -> list:
@@ -411,16 +428,34 @@ class BattleScene(Scene):
             self.board.draw(surface)
 
         button_padding = 16
-        btn_w = self._inventory_button_label.get_width() + button_padding * 2
+        label_width = max(
+            self._inventory_button_label.get_width(),
+            self._synthesis_button_label.get_width(),
+        )
+        btn_w = label_width + button_padding * 2
         btn_h = self._inventory_button_label.get_height() + button_padding
+        top_right = (screen_rect.right - 40, 40)
+
         self._inventory_button_rect = pygame.Rect(0, 0, btn_w, btn_h)
-        self._inventory_button_rect.topright = (screen_rect.right - 40, 40)
+        self._inventory_button_rect.topright = top_right
         pygame.draw.rect(surface, (200, 200, 200), self._inventory_button_rect)
         pygame.draw.rect(surface, (50, 50, 50), self._inventory_button_rect, 2)
-        label_rect = self._inventory_button_label.get_rect(
+        inv_label_rect = self._inventory_button_label.get_rect(
             center=self._inventory_button_rect.center
         )
-        surface.blit(self._inventory_button_label, label_rect)
+        surface.blit(self._inventory_button_label, inv_label_rect)
+
+        self._synthesis_button_rect = pygame.Rect(0, 0, btn_w, btn_h)
+        self._synthesis_button_rect.topright = (
+            top_right[0],
+            self._inventory_button_rect.bottom + 20,
+        )
+        pygame.draw.rect(surface, (200, 200, 200), self._synthesis_button_rect)
+        pygame.draw.rect(surface, (50, 50, 50), self._synthesis_button_rect, 2)
+        synth_label_rect = self._synthesis_button_label.get_rect(
+            center=self._synthesis_button_rect.center
+        )
+        surface.blit(self._synthesis_button_label, synth_label_rect)
 
         portrait_height = self.actor_portraits[0].get_height()
         spacing = 70
@@ -469,25 +504,36 @@ class BattleScene(Scene):
         )
         surface.blit(hint, hint_rect)
 
-    def handle_event(self, event):
+    def handle_event(self, event) -> bool:
         if self.action_bar.handle_event(event):
-            return
+            return True
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                pass
+                return False
             elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
                 idx = event.key - pygame.K_1
                 self.cycle_actor_spell(idx)
+                return True
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self._inventory_button_rect.collidepoint(event.pos):
                 inventory_scene = InventoryScene(
                     self.font,
-                    change_scene=self.change_scene,
+                    controller=self.controller,
                     inventory=self.inventory,
                     actors=self.actors,
                     battle_scene=self,
                 )
-                self.change_scene(inventory_scene)
+                self.controller.push(inventory_scene)
+                return True
+            if self._synthesis_button_rect.collidepoint(event.pos):
+                synthesis_scene = SynthesisScene(
+                    self.font,
+                    controller=self.controller,
+                    inventory=self.inventory,
+                )
+                self.controller.push(synthesis_scene)
+                return True
+        return False
 
     def update(self, dt):
         self._update_ko_timers(dt)
