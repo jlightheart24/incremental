@@ -9,8 +9,8 @@ def run_game():
     pygame.init()
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     font = pygame.font.Font("assets/Orbitron-VariableFont_wght.ttf", 24)
-    manager = Manager(None)
-    menu = MainMenu(font, change_scene=manager.set_scene)
+    manager = Manager()
+    menu = MainMenu(font, controller=manager.controller)
     manager.set_scene(menu)
     clock = pygame.time.Clock()
     running = True

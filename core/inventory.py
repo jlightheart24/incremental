@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 
 from core.items import get_item, Item
+from core.materials import get_material
 
 
 class Inventory:
@@ -25,6 +26,8 @@ class Inventory:
         self.item_list: List[str] = []
         # Munny (currency) held by the party; treat inventory as the ledger.
         self.munny: int = 0
+        # Crafting materials tracked by identifier -> quantity owned.
+        self.materials: Dict[str, int] = defaultdict(int)
 
     def add_munny(self, amount: int) -> None:
         if amount < 0:
@@ -120,3 +123,30 @@ class Inventory:
         slot_items.append(item_id)
         self.item_list.append(item_id)
         self._apply_item_stats(actor, item, remove=True)
+
+    # --- Material helpers -------------------------------------------------
+
+    def add_material(self, material_id: str, amount: int = 1) -> None:
+        if amount <= 0:
+            raise ValueError("Material amount must be positive")
+        get_material(material_id)  # Validate identifier.
+        self.materials[material_id] += amount
+
+    def material_count(self, material_id: str) -> int:
+        return self.materials.get(material_id, 0)
+
+    def has_materials(self, costs: Dict[str, int]) -> bool:
+        return all(self.material_count(mid) >= qty for mid, qty in costs.items())
+
+    def spend_materials(self, costs: Dict[str, int]) -> None:
+        if not self.has_materials(costs):
+            raise ValueError("Insufficient materials for synthesis")
+        for material_id, qty in costs.items():
+            if qty <= 0:
+                continue
+            self.materials[material_id] -= qty
+            if self.materials[material_id] <= 0:
+                self.materials.pop(material_id, None)
+
+    def iter_materials(self):
+        return self.materials.items()

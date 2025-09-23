@@ -65,7 +65,17 @@ DEFAULT_ENCOUNTER_POOLS = {
                 {
                     "item_id": "elven_bandana",
                     "chance": 0.3,
-                }
+                },
+                {
+                    "material_id": "dark_shard",
+                    "chance": 0.8,
+                    "amount": 2,
+                },
+                {
+                    "material_id": "bright_shard",
+                    "chance": 0.5,
+                    "amount": 1,
+                },
             ],
         },
         {
@@ -80,7 +90,17 @@ DEFAULT_ENCOUNTER_POOLS = {
                 {
                     "item_id": "champion_belt",
                     "chance": 0.3,
-                }
+                },
+                {
+                    "material_id": "mythril_fragment",
+                    "chance": 0.6,
+                    "amount": 1,
+                },
+                {
+                    "material_id": "dark_shard",
+                    "chance": 0.4,
+                    "amount": 1,
+                },
             ],
         }
     ]
