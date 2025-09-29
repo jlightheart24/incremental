@@ -3,6 +3,7 @@
 from .scene import MainMenu, Manager, Scene
 from .battle_scene import BattleScene
 from .inventory_scene import InventoryScene
+from .map_scene import MapScene
 from .synthesis_scene import SynthesisScene
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "MainMenu",
     "BattleScene",
     "InventoryScene",
+    "MapScene",
     "SynthesisScene",
 ]

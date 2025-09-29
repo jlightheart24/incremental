@@ -51,49 +51,21 @@ class EncounterPool:
 
 
 DEFAULT_ENCOUNTER_POOLS = {
-    # Edit these entries (or add more pools) to control what the UI can spawn.
-    "shadowlands": [
+    # Beachfront Heartless patrols for the Destiny Islands starting scenario.
+    "destiny_islands_beach": [
         {
-            "hp": 25,
-            "atk": 1,
+            "name": "Shadow",
+            "hp": 22,
+            "atk": 2,
             "defense": 1,
-            "cd": 3,
+            "cd": 2.5,
             "portrait_path": "assets/portraits/enemies/shadow.png",
-            "xp_reward": 10,
-            "munny_reward": 5,
+            "xp_reward": 12,
+            "munny_reward": 6,
             "drops": [
-                {
-                    "item_id": "elven_bandana",
-                    "chance": 0.3,
-                },
-                {
-                    "material_id": "dark_shard",
-                    "chance": 0.8,
-                    "amount": 2,
-                },
                 {
                     "material_id": "bright_shard",
                     "chance": 0.5,
-                    "amount": 1,
-                },
-            ],
-        },
-        {
-            "hp": 100,
-            "atk": 5,
-            "defense": 2,
-            "cd":2,
-            "portrait_path": "assets/portraits/enemies/soldier.png",
-            "xp_reward": 25,
-            "munny_reward": 10,
-            "drops": [
-                {
-                    "item_id": "champion_belt",
-                    "chance": 0.3,
-                },
-                {
-                    "material_id": "mythril_fragment",
-                    "chance": 0.6,
                     "amount": 1,
                 },
                 {
@@ -102,6 +74,72 @@ DEFAULT_ENCOUNTER_POOLS = {
                     "amount": 1,
                 },
             ],
-        }
-    ]
+        },
+        {
+            "name": "Soldier",
+            "hp": 48,
+            "atk": 4,
+            "defense": 2,
+            "cd": 2.0,
+            "portrait_path": "assets/portraits/enemies/soldier.png",
+            "xp_reward": 24,
+            "munny_reward": 12,
+            "drops": [
+                {
+                    "item_id": "champion_belt",
+                    "chance": 0.25,
+                },
+                {
+                    "material_id": "mythril_fragment",
+                    "chance": 0.5,
+                    "amount": 1,
+                },
+            ],
+        },
+    ],
+    "destiny_islands_cove": [
+        {
+            "name": "Sea Neon",
+            "hp": 30,
+            "atk": 3,
+            "defense": 1,
+            "cd": 2.2,
+            "portrait_path": "assets/portraits/enemies/shadow.png",
+            "xp_reward": 16,
+            "munny_reward": 10,
+            "drops": [
+                {
+                    "material_id": "bright_shard",
+                    "chance": 0.55,
+                    "amount": 1,
+                },
+                {
+                    "material_id": "dark_shard",
+                    "chance": 0.45,
+                    "amount": 1,
+                },
+            ],
+        },
+        {
+            "name": "Large Body",
+            "hp": 120,
+            "atk": 6,
+            "defense": 3,
+            "cd": 2.8,
+            "portrait_path": "assets/portraits/enemies/soldier.png",
+            "xp_reward": 32,
+            "munny_reward": 18,
+            "drops": [
+                {
+                    "item_id": "elven_bandana",
+                    "chance": 0.35,
+                },
+                {
+                    "material_id": "mythril_fragment",
+                    "chance": 0.65,
+                    "amount": 1,
+                },
+            ],
+        },
+    ],
 }
