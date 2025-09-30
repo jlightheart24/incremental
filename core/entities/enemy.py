@@ -19,6 +19,7 @@ class Enemy(Character):
         xp_reward: int = 50,
         munny_reward: int = 0,
         drops: list | None = None,
+        level: int = 1,
     ) -> None:
         super().__init__(
             name,
@@ -31,9 +32,33 @@ class Enemy(Character):
             mp_gain=mp_gain,
             portrait_path=portrait_path,
         )
+        self.level = max(1, int(level))
+        self._base_stats = {
+            "hp": int(hp),
+            "atk": int(atk),
+            "defense": int(defense),
+            "speed": int(speed),
+        }
         self.xp_reward = xp_reward
         self.munny_reward = munny_reward
         self.drops = list(drops) if drops else []
+        self._apply_level_scaling()
 
     def __str__(self) -> str:
-        return f"{self.name}(HP={self.health.current})"
+        return f"{self.name}(Lv{self.level} HP={self.health.current})"
+
+    def _apply_level_scaling(self) -> None:
+        if self.level <= 1:
+            return
+
+        multiplier = float(self.level)
+
+        def scale(value: int) -> int:
+            return max(1, int(round(value * multiplier)))
+
+        self.stats.max_hp = scale(self._base_stats["hp"])
+        self.health.max = self.stats.max_hp
+        self.health.current = self.health.max
+        self.stats.atk = scale(self._base_stats["atk"])
+        self.stats.defense = scale(self._base_stats["defense"])
+        self.stats.speed = scale(self._base_stats["speed"])
