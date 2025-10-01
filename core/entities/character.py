@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from core.attack import AttackProfile, AttackState
-from core.stats import Health, Stats
+from core.gameplay.attack import AttackProfile, AttackState
+from core.gameplay.stats import Health, Stats
 
 
 class Character:

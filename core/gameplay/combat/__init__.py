@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, Iterable, Optional, TYPE_CHECKING
 
-from core.damage import calc_damage
+from core.gameplay.damage import calc_damage
 
 
 if TYPE_CHECKING:

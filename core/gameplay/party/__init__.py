@@ -5,7 +5,7 @@ import os
 from typing import Iterable, List, Sequence
 
 from core.entities import Actor
-from core.inventory import Inventory
+from core.gameplay.inventory import Inventory
 
 
 def _resolve_portrait_path(value):

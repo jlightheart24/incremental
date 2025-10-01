@@ -2,9 +2,9 @@ import unittest
 
 
 # Test doubles and imports kept minimal to focus on CombatSystem behavior.
-from core.combat import TickController, CombatSystem
-from core.stats import Stats, Health, Mana
-from core.attack import AttackProfile, AttackState
+from core.gameplay.combat import TickController, CombatSystem
+from core.gameplay.stats import Stats, Health, Mana
+from core.gameplay.attack import AttackProfile, AttackState
 
 
 class TestAttackState(AttackState):

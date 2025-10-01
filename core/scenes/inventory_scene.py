@@ -2,8 +2,8 @@ from collections import OrderedDict
 
 import pygame
 
-from core.inventory import Inventory
-from core.items import get_item
+from core.gameplay.inventory import Inventory
+from core.data.items import get_item
 from core.scenes.scene import Manager, Scene
 
 

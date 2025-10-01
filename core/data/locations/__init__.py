@@ -10,6 +10,7 @@ from typing import Dict, Iterable
 @dataclass(frozen=True)
 class LocationDef:
     location_id: str
+    world_id: str
     title: str
     subtitle: str
     encounter_pool: str
@@ -17,10 +18,12 @@ class LocationDef:
 
 
 _DESTINY_ISLANDS_BG_DIR = os.path.join("assets", "backgrounds")
+_TRAVERSE_TOWN_BG_DIR = os.path.join("assets", "backgrounds")
 
 _LOCATIONS: Dict[str, LocationDef] = {
     "destiny_islands_beach": LocationDef(
         location_id="destiny_islands_beach",
+        world_id="destiny_islands",
         title="Destiny Islands",
         subtitle="Beach",
         encounter_pool="destiny_islands_beach",
@@ -28,10 +31,27 @@ _LOCATIONS: Dict[str, LocationDef] = {
     ),
     "destiny_islands_cove": LocationDef(
         location_id="destiny_islands_cove",
+        world_id="destiny_islands",
         title="Destiny Islands",
         subtitle="Cove",
         encounter_pool="destiny_islands_cove",
         background_image=os.path.join(_DESTINY_ISLANDS_BG_DIR, "destiny_islands.png"),
+    ),
+    "traverse_town_first_district": LocationDef(
+        location_id="traverse_town_first_district",
+        world_id="traverse_town",
+        title="Traverse Town",
+        subtitle="First District",
+        encounter_pool="traverse_town_first_district",
+        background_image=os.path.join(_TRAVERSE_TOWN_BG_DIR, "traverse_town.png"),
+    ),
+    "traverse_town_second_district": LocationDef(
+        location_id="traverse_town_second_district",
+        world_id="traverse_town",
+        title="Traverse Town",
+        subtitle="Second District",
+        encounter_pool="traverse_town_second_district",
+        background_image=os.path.join(_TRAVERSE_TOWN_BG_DIR, "traverse_town.png"),
     ),
 }
 

@@ -1,10 +1,10 @@
 import pygame
 
-from core.inventory import Inventory
-from core.items import get_item
-from core.materials import material_name
+from core.gameplay.inventory import Inventory
+from core.data.items import get_item
+from core.data.materials import material_name
 from core.scenes.scene import Manager, Scene
-from core.synthesis import SynthesisRecipe, iter_recipes
+from core.data.synthesis import SynthesisRecipe, iter_recipes
 
 
 class SynthesisScene(Scene):

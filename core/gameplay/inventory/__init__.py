@@ -3,8 +3,8 @@
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
-from core.items import get_item, Item
-from core.materials import get_material
+from core.data.items import get_item, Item
+from core.data.materials import get_material
 
 
 class Inventory:

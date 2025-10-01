@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from core.entities.character import Character
-from core.spells import Spell, get_spell
-from core.stats import Mana
+from core.data.spells import Spell, get_spell
+from core.gameplay.stats import Mana
 
 
 class Actor(Character):

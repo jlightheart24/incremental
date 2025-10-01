@@ -146,4 +146,40 @@ DEFAULT_ENCOUNTER_POOLS = {
             ],
         },
     ],
+    "traverse_town_first_district": [
+        {"enemy_id": "shadow", "level": 3, "xp_reward": 22, "munny_reward": 14},
+        {
+            "enemy_id": "soldier",
+            "level": 4,
+            "xp_reward": 36,
+            "munny_reward": 22,
+            "drops": [
+                {
+                    "material_id": "mythril_fragment",
+                    "chance": 0.6,
+                    "amount": 1,
+                },
+            ],
+        },
+    ],
+    "traverse_town_second_district": [
+        {
+            "enemy_id": "soldier",
+            "level": 5,
+            "xp_reward": 44,
+            "munny_reward": 28,
+        },
+        {
+            "enemy_id": "soldier",
+            "level": 6,
+            "xp_reward": 48,
+            "munny_reward": 32,
+            "drops": [
+                {
+                    "item_id": "champion_belt",
+                    "chance": 0.35,
+                },
+            ],
+        },
+    ],
 }

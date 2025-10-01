@@ -31,7 +31,7 @@ def run_game():
 
 def run_combat_demo():
     """Headless demo: simulate combat ticks and print events."""
-    from core.combat import CombatSystem, TickController
+    from core.gameplay.combat import CombatSystem, TickController
 
     print("Mode: Combat Demo | Python:", sys.executable)
 

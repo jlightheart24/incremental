@@ -4,18 +4,18 @@ from typing import Iterable
 
 import pygame
 
-from core.combat import CombatSystem, TickController
-from core.encounters import DEFAULT_ENCOUNTER_POOLS, EncounterPool
+from core.gameplay.combat import CombatSystem, TickController
+from core.data.encounters import DEFAULT_ENCOUNTER_POOLS, EncounterPool
 from core.entities import Actor, Enemy
-from core.inventory import Inventory
-from core.items import get_item
-from core.locations import DEFAULT_LOCATION_ID, get_location
+from core.gameplay.inventory import Inventory
+from core.data.items import get_item
+from core.data.locations import DEFAULT_LOCATION_ID, get_location
 from core.scenes.scene import Manager, Scene
-from core.spells import spell_ids
-from core.render import RenderSystem
+from core.data.spells import spell_ids
+from core.systems.render import RenderSystem
 from core.ui.actionbar import ActionBar
 from core.ui.battle_hud import BattleHUD
-from core.materials import material_name
+from core.data.materials import material_name
 from core.scenes.inventory_scene import InventoryScene
 from core.scenes.board import HexBoard
 from core.scenes.synthesis_scene import SynthesisScene
@@ -195,7 +195,7 @@ class BattleScene(Scene):
         actor.attack_state.reset()
 
     def _build_party(self):
-        from core.party import DEFAULT_PARTY_TEMPLATES, build_party
+        from core.gameplay.party import DEFAULT_PARTY_TEMPLATES, build_party
 
         return build_party(
             DEFAULT_PARTY_TEMPLATES,
