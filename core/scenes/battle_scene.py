@@ -1,5 +1,6 @@
 import os
 import random
+from datetime import datetime
 from typing import Iterable
 
 import pygame
@@ -12,6 +13,7 @@ from core.data.items import get_item
 from core.data.locations import DEFAULT_LOCATION_ID, get_location
 from core.scenes.scene import Manager, Scene
 from core.data.spells import spell_ids
+from core.data.savegame import GameState, save_state
 from core.systems.render import RenderSystem
 from core.ui.actionbar import ActionBar
 from core.ui.battle_hud import BattleHUD
@@ -30,9 +32,17 @@ class BattleScene(Scene):
         location_id: str | None = None,
         inventory: Inventory | None = None,
         actors: Iterable[Actor] | None = None,
+        save_slot: str | None = None,
+        save_created_at: datetime | None = None,
+        save_updated_at: datetime | None = None,
     ):
         self.font = font
         self.controller = controller
+        self.save_slot = save_slot
+        self._save_created_at = save_created_at
+        self._save_updated_at = save_updated_at
+        self._save_message: str | None = None
+        self._save_message_timer = 0.0
         selected_location_id = location_id or DEFAULT_LOCATION_ID
         try:
             location = get_location(selected_location_id)
@@ -223,8 +233,42 @@ class BattleScene(Scene):
             location_id=location_id,
             inventory=self.inventory,
             actors=self.actors,
+            save_slot=self.save_slot,
+            save_created_at=self._save_created_at,
+            save_updated_at=self._save_updated_at,
         )
         self.controller.replace(new_scene)
+
+    def _set_save_feedback(self, message: str, duration: float = 2.0) -> None:
+        self._save_message = message
+        self._save_message_timer = max(0.0, float(duration))
+
+    def _build_game_state(self) -> GameState:
+        if not self.save_slot:
+            raise ValueError("Save slot is not assigned for this battle")
+        return GameState(
+            slot_id=self.save_slot,
+            location_id=self.location_id,
+            inventory=self.inventory,
+            actors=list(self.actors),
+            created_at=self._save_created_at,
+            updated_at=self._save_updated_at,
+        )
+
+    def _save_game(self) -> None:
+        if not self.save_slot:
+            self._set_save_feedback("Cannot save without a slot.")
+            return
+        try:
+            state = self._build_game_state()
+            save_state(state)
+        except Exception as exc:  # pragma: no cover - log branch
+            print(f"[Save] Failed to write slot {self.save_slot}: {exc}")
+            self._set_save_feedback("Save failed.")
+            return
+        self._save_created_at = state.created_at
+        self._save_updated_at = state.updated_at
+        self._set_save_feedback("Game saved.")
 
     def cycle_actor_spell(self, actor_index: int) -> None:
         if not self.available_spells:
@@ -429,6 +473,12 @@ class BattleScene(Scene):
             location_subtitle=self.location_subtitle,
         )
 
+        if self._save_message:
+            message = self.font.render(self._save_message, True, (245, 245, 255))
+            message_rect = message.get_rect()
+            message_rect.midbottom = (screen_rect.centerx, screen_rect.height - 24)
+            surface.blit(message, message_rect)
+
     def handle_event(self, event) -> bool:
         if self.action_bar.handle_event(event):
             return True
@@ -438,6 +488,9 @@ class BattleScene(Scene):
             elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
                 idx = event.key - pygame.K_1
                 self.cycle_actor_spell(idx)
+                return True
+            elif event.key == pygame.K_F5:
+                self._save_game()
                 return True
             elif event.key == pygame.K_m:
                 self._open_map_scene()
@@ -478,3 +531,8 @@ class BattleScene(Scene):
         self.tc.update(dt, self.cs.on_tick)
         if current_enemy.health.is_dead():
             self._handle_enemy_defeated(current_enemy)
+
+        if self._save_message_timer > 0.0:
+            self._save_message_timer = max(0.0, self._save_message_timer - dt)
+            if self._save_message_timer <= 0.0:
+                self._save_message = None

@@ -96,7 +96,7 @@ class MainMenu(Scene):
         screen_rect = surface.get_rect()
         surface.fill((30, 30, 30))
         title = self.font.render(
-            "Main Menu - Press Enter to Start Battle",
+            "Main Menu - Press Enter to Select Save",
             True,
             (255, 255, 255),
         )
@@ -105,11 +105,10 @@ class MainMenu(Scene):
 
     def handle_event(self, event) -> bool:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-            # Lazy import to avoid circular dependency during module import.
-            from core.scenes.battle_scene import BattleScene
+            from core.scenes.load_save_scene import LoadSaveScene
 
-            self.controller.replace(
-                BattleScene(self.font, controller=self.controller)
+            self.controller.push(
+                LoadSaveScene(self.font, controller=self.controller)
             )
             return True
         return False
