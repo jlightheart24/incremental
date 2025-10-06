@@ -3,6 +3,7 @@
 __all__ = [
     "encounters",
     "items",
+    "item_levels",
     "locations",
     "materials",
     "spells",

@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 
 from core.data.items import get_item, Item
+from core.data.item_levels import ItemLevelRequirement, max_level, requirement_for_level
 from core.data.materials import get_material
 
 
@@ -28,6 +29,8 @@ class Inventory:
         self.munny: int = 0
         # Crafting materials tracked by identifier -> quantity owned.
         self.materials: Dict[str, int] = defaultdict(int)
+        # Persistent item levels keyed by item identifier.
+        self.item_levels: Dict[str, int] = {}
 
     def add_munny(self, amount: int) -> None:
         if amount < 0:
@@ -42,7 +45,7 @@ class Inventory:
         self.munny -= amount
 
     def add_item(self, item_id: str) -> None:
-        item = get_item(item_id)
+        item = self.leveled_item(item_id)
         slot = item.slot
         current = self.items_by_slot[slot]
         if len(current) >= self.capacity.get(slot, 0):
@@ -150,3 +153,86 @@ class Inventory:
 
     def iter_materials(self):
         return self.materials.items()
+
+    # --- Item level helpers -----------------------------------------------
+
+    def item_level(self, item_id: str) -> int:
+        level = self.item_levels.get(item_id, 1)
+        return level if level > 0 else 1
+
+    def set_item_level(self, item_id: str, level: int) -> None:
+        if level <= 0:
+            raise ValueError("Item level must be positive")
+        if level == 1:
+            self.item_levels.pop(item_id, None)
+        else:
+            self.item_levels[item_id] = level
+
+    def iter_item_levels(self):
+        return self.item_levels.items()
+
+    def leveled_item_at_level(self, item_id: str, level: int) -> Item:
+        item = get_item(item_id)
+        adjusted_level = max(level, 1)
+        if adjusted_level <= 1:
+            return item
+        bonus = adjusted_level - 1
+        for attr in ("atk", "defense", "mp"):
+            current_value = getattr(item, attr, 0)
+            if current_value > 0:
+                setattr(item, attr, current_value + bonus)
+        return item
+
+    def leveled_item(self, item_id: str) -> Item:
+        return self.leveled_item_at_level(item_id, self.item_level(item_id))
+
+    def item_count(self, item_id: str) -> int:
+        return self.item_list.count(item_id)
+
+    def next_level_requirement(self, item_id: str) -> ItemLevelRequirement | None:
+        current_level = self.item_level(item_id)
+        target_level = current_level + 1
+        if target_level > max_level(item_id):
+            return None
+        return requirement_for_level(item_id, target_level)
+
+    def can_level_item(self, item_id: str) -> bool:
+        requirement = self.next_level_requirement(item_id)
+        if requirement is None:
+            return False
+        if self.item_count(item_id) < requirement.item_cost:
+            return False
+        return self.has_materials(requirement.materials)
+
+    def level_up_item(self, item_id: str) -> ItemLevelRequirement:
+        requirement = self.next_level_requirement(item_id)
+        if requirement is None:
+            raise ValueError("Item is already at max level")
+        if self.item_count(item_id) < requirement.item_cost:
+            raise ValueError("Not enough duplicate items to level up")
+        if not self.has_materials(requirement.materials):
+            raise ValueError("Missing required materials")
+
+        self._consume_items(item_id, requirement.item_cost)
+        self.spend_materials(requirement.materials)
+        new_level = self.item_level(item_id) + 1
+        self.set_item_level(item_id, new_level)
+        return requirement
+
+    def _consume_items(self, item_id: str, amount: int) -> None:
+        if amount <= 0:
+            return
+        slot = get_item(item_id).slot
+        slot_items = self.items_by_slot.get(slot, [])
+        removed = 0
+        while removed < amount:
+            try:
+                slot_items.remove(item_id)
+            except ValueError:
+                break
+            removed += 1
+        for _ in range(removed):
+            try:
+                self.item_list.remove(item_id)
+            except ValueError:
+                break

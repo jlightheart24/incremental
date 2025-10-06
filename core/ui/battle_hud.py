@@ -16,9 +16,11 @@ class BattleHUD:
         self.action_bar = action_bar
         self.inventory_button_rect = pygame.Rect(0, 0, 0, 0)
         self.synthesis_button_rect = pygame.Rect(0, 0, 0, 0)
+        self.leveling_button_rect = pygame.Rect(0, 0, 0, 0)
         self.map_button_rect = pygame.Rect(0, 0, 0, 0)
         self._inventory_button_label = self.font.render("Inventory", True, (0, 0, 0))
         self._synthesis_button_label = self.font.render("Synthesis", True, (0, 0, 0))
+        self._leveling_button_label = self.font.render("Item Leveling", True, (0, 0, 0))
         self._map_button_label = self.font.render("Map", True, (0, 0, 0))
         self._dead_portraits: dict[Actor, pygame.Surface] = {}
         self._hint_text = "ESC: Quit | 1-3: Cycle Spells"
@@ -73,6 +75,7 @@ class BattleHUD:
         label_width = max(
             self._inventory_button_label.get_width(),
             self._synthesis_button_label.get_width(),
+            self._leveling_button_label.get_width(),
             self._map_button_label.get_width(),
         )
         btn_w = label_width + button_padding * 2
@@ -100,10 +103,22 @@ class BattleHUD:
         )
         surface.blit(self._synthesis_button_label, synth_label_rect)
 
+        self.leveling_button_rect = pygame.Rect(0, 0, btn_w, btn_h)
+        self.leveling_button_rect.topright = (
+            top_right[0],
+            self.synthesis_button_rect.bottom + 20,
+        )
+        pygame.draw.rect(surface, (200, 200, 200), self.leveling_button_rect)
+        pygame.draw.rect(surface, (50, 50, 50), self.leveling_button_rect, 2)
+        level_label_rect = self._leveling_button_label.get_rect(
+            center=self.leveling_button_rect.center
+        )
+        surface.blit(self._leveling_button_label, level_label_rect)
+
         self.map_button_rect = pygame.Rect(0, 0, btn_w, btn_h)
         self.map_button_rect.topright = (
             top_right[0],
-            self.synthesis_button_rect.bottom + 20,
+            self.leveling_button_rect.bottom + 20,
         )
         pygame.draw.rect(surface, (200, 200, 200), self.map_button_rect)
         pygame.draw.rect(surface, (50, 50, 50), self.map_button_rect, 2)

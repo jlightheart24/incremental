@@ -16,7 +16,7 @@ from core.gameplay.inventory import Inventory
 from core.gameplay.party import DEFAULT_PARTY_TEMPLATES, build_party
 
 SAVE_DIR_ENV = "INCREMENTAL_SAVE_DIR"
-SAVE_VERSION = 1
+SAVE_VERSION = 2
 SAVE_FILE_SUFFIX = ".json"
 DEFAULT_MAX_SLOTS = 3
 
@@ -83,6 +83,11 @@ def _serialize_inventory(inventory: Inventory) -> Dict[str, Any]:
             material_id: int(amount)
             for material_id, amount in inventory.materials.items()
         },
+        "item_levels": {
+            item_id: int(level)
+            for item_id, level in inventory.iter_item_levels()
+            if level > 1
+        },
     }
 
 
@@ -146,10 +151,17 @@ def _build_inventory(payload: Dict[str, Any]) -> Inventory:
             for material_id, amount in payload.get("materials", {}).items()
         },
     )
+    item_levels_payload = payload.get("item_levels", {})
+    inventory.item_levels = {}
+    for item_id, level in item_levels_payload.items():
+        converted = int(level)
+        if converted <= 1:
+            continue
+        inventory.item_levels[item_id] = converted
     return inventory
 
 
-def _build_actor(payload: Dict[str, Any]) -> Actor:
+def _build_actor(payload: Dict[str, Any], *, inventory: Inventory | None = None) -> Actor:
     stats = payload.get("stats", {})
     attack_profile = payload.get("attack_profile", {})
     mana_payload = payload.get("mana", {})
@@ -188,7 +200,10 @@ def _build_actor(payload: Dict[str, Any]) -> Actor:
         actor.equipment = {}
         for slot, item_id in equipment_payload.items():
             try:
-                item = get_item(item_id)
+                if inventory is not None:
+                    item = inventory.leveled_item(item_id)
+                else:
+                    item = get_item(item_id)
             except KeyError:
                 continue
             actor.equipment[slot] = (item_id, item)
@@ -279,7 +294,7 @@ def load_state(
     inventory_payload = payload.get("inventory", {})
     actors_payload = payload.get("actors", [])
     inventory = _build_inventory(inventory_payload)
-    actors = [_build_actor(entry) for entry in actors_payload]
+    actors = [_build_actor(entry, inventory=inventory) for entry in actors_payload]
     state = GameState(
         slot_id=slot_id,
         location_id=payload.get("location_id", DEFAULT_LOCATION_ID),

@@ -21,6 +21,7 @@ from core.data.materials import material_name
 from core.scenes.inventory_scene import InventoryScene
 from core.scenes.board import HexBoard
 from core.scenes.synthesis_scene import SynthesisScene
+from core.scenes.item_level_scene import ItemLevelScene
 
 
 class BattleScene(Scene):
@@ -513,6 +514,15 @@ class BattleScene(Scene):
                     inventory=self.inventory,
                 )
                 self.controller.push(synthesis_scene)
+                return True
+            if self.hud.leveling_button_rect.collidepoint(event.pos):
+                leveling_scene = ItemLevelScene(
+                    self.font,
+                    controller=self.controller,
+                    inventory=self.inventory,
+                    actors=self.actors,
+                )
+                self.controller.push(leveling_scene)
                 return True
             if self.hud.map_button_rect.collidepoint(event.pos):
                 self._open_map_scene()

@@ -3,7 +3,6 @@ from collections import OrderedDict
 import pygame
 
 from core.gameplay.inventory import Inventory
-from core.data.items import get_item
 from core.scenes.scene import Manager, Scene
 
 
@@ -187,7 +186,7 @@ class InventoryScene(Scene):
                 inv_top += slot_header.get_height() + 6
 
                 for item_id, count in item_counts.items():
-                    item = get_item(item_id)
+                    item = self.inventory.leveled_item(item_id)
                     item_rect = pygame.Rect(
                         inv_left,
                         inv_top,
