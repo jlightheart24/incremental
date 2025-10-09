@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     A[Main Menu] <--> B[Save Select]
     B <--> C[Battle Scene]
@@ -7,3 +8,4 @@ flowchart TD
     D <--> G[Map]
     D <--> H[Synthesis]
     G <--> H
+```
