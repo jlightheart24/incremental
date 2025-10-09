@@ -25,6 +25,7 @@ class ActionBar:
         self._selected_actor = None
         self._bounds = pygame.Rect(0, 0, BAR_WIDTH, 0)
         self._pending_activation = None
+        self._pending_request = None
 
     def width(self) -> int:
         return BAR_WIDTH
@@ -145,6 +146,17 @@ class ActionBar:
                 )
             )
         return items
+    
+    def has_pending_request(self) -> bool:
+        return self._pending_request is not None
+    
+    def _queue_request(self, payload: dict) -> None:
+        self._pending_request = payload
+    
+    def consume_pending_request(self) -> dict | None:
+        req = self._pending_request
+        self._pending_request = None
+        return req
 
     def _activate(self, payload: dict) -> None:
         action = payload.get("action")

@@ -3,10 +3,14 @@ Leveling up the item doesn't just upgrade the stats but also the number of times
 Prestige the item itself (drops to only one equip higher base stats)
 
 To Do:
+Attack and spell targeting
+Spell AOE Damage
+Add enemy with a spell cast
 
 Later:
-Add item leveling up
 Party Bench and Party manager
+Make a boss area
+Add a shop
 
 Done:
 Action Bar
@@ -17,6 +21,7 @@ Add a board for the enemies to move along
 Adding Location name and background
 Add a map to switch between locations
 Make sure that there are different enemy pools for the different locations
+Add item leveling up
 
 
 Resources:
