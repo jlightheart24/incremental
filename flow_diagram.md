@@ -7,5 +7,4 @@ flowchart TD
     D <--> F[Abilities]
     D <--> G[Map]
     D <--> H[Synthesis]
-    G <--> H
 ```
