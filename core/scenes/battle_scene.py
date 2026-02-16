@@ -101,6 +101,8 @@ class BattleScene(Scene):
             select_enemy_target=self._closest_actor_for,
         )
         original_basic_attack = self.cs.basic_attack
+        
+        self._targeting = None
 
         def wrapped_basic_attack(attacker, defender):
             damage = original_basic_attack(attacker, defender)

@@ -161,7 +161,7 @@ class ActionBar:
     def _activate(self, payload: dict) -> None:
         action = payload.get("action")
         if action == "attack":
-            self._on_attack()
+            self._queue_request({"kind": "attack"})
             self._mode = "root"
             self._selected_actor = None
         elif action == "choose_actor":
@@ -174,6 +174,6 @@ class ActionBar:
             actor_index = payload.get("actor_index")
             spell_id = payload.get("spell_id")
             if actor_index is not None and spell_id is not None:
-                self._on_spell_assign(actor_index, spell_id)
+                self._queue_request({"kind": "assign_spell", "actor_index": actor_index, "spell_id": spell_id})
             self._selected_actor = None
             self._mode = "root"
